@@ -1,15 +1,19 @@
-import express from "express";
-import upload from "../middleware/multer.js";
-import {
-  addAlbum,
-  listAlbum,
-  removeAlbum
-} from "../controllers/albumController.js";
+import express from 'express'
+import { forgotPassword, login, logout, refreshToken, register, resetPassword, verifyLoginOTP } from '../controllers/auth.controller.js';
+import authMiddleware from '../middleware/auth.middleware.js';
 
-const albumRouter = express.Router();
+const authRouter = express.Router();
 
-albumRouter.post("/add", upload.single("image"), addAlbum);
-albumRouter.get("/list", listAlbum);
-albumRouter.post("/remove", removeAlbum);
+authRouter.post("/register", register);
+authRouter.post("/login", login);
+authRouter.post("/login/verify-otp", verifyLoginOTP);
 
-export default albumRouter;
+authRouter.post("/refresh-token", refreshToken);
+
+authRouter.post("/forgot-password", forgotPassword);
+authRouter.post("/reset-password", resetPassword);
+
+authRouter.post("/logout", authMiddleware, logout);
+
+
+export default authRouter

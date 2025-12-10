@@ -7,8 +7,8 @@ import "dotenv/config";
 
 import connectCloudinary from "./src/config/cloudinary.js";
 import connectDB from "./src/config/mongodb.js";
-import redis from "./src/config/redis.js";
-import register from "./src/config/prometheus.js";  // <-- new
+
+import register from "./src/config/prometheus.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -47,11 +47,15 @@ import songRouter from "./src/routes/songRoute.js";
 import albumRouter from "./src/routes/albumRoute.js";
 import authRouter from "./src/routes/auth.route.js";
 import userRouter from "./src/routes/user.route.js";
+import libraryRouter from "./src/routes/library.route.js";
 
 app.use("/api/song", songRouter);
 app.use("/api/album", albumRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
+app.use("/api/library", libraryRouter);
+
+
 
 /* DEFAULT ROUTE */
 app.get("/", (req, res) => res.send("API Working - Production Optimized"));
