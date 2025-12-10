@@ -11,10 +11,10 @@ import {
 
 const router = express.Router();
 
-/* GET PROFILE */
+/* GET USER PROFILE */
 router.get("/me", authMiddleware, getProfile);
 
-/* UPDATE PROFILE */
+/* UPDATE USER DETAILS */
 router.patch("/me/update", authMiddleware, updateDetails);
 
 /* CHANGE PASSWORD */

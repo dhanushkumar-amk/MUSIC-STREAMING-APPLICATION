@@ -1,4 +1,4 @@
-import mongoose from "mongoose"
+import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
@@ -6,11 +6,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      lowercase: true
+      lowercase: true,
+      trim: true,
+      index: true
     },
     password: {
       type: String,
-      required: true
+      required: true,
+      minlength: 6
     },
     isEmailVerified: {
       type: Boolean,
@@ -22,6 +25,9 @@ const userSchema = new mongoose.Schema(
     }
   },
   { timestamps: true }
-)
+);
 
-export default mongoose.model("User", userSchema)
+/* Additional optimization */
+userSchema.index({ email: 1 });
+
+export default mongoose.model("User", userSchema);

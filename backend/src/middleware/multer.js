@@ -1,11 +1,22 @@
 import multer from "multer";
 
-const storage = multer.diskStorage({
-    filename: function (req, file, callback) {
-        callback(null, file.originalname);
-    }
+/* Memory storage for Cloudinary (faster & safer) */
+const storage = multer.memoryStorage();
+
+/* Optional file filter */
+const fileFilter = (req, file, cb) => {
+  if (!file.mimetype.startsWith("image") && !file.mimetype.startsWith("audio")) {
+    return cb(new Error("Unsupported file type"), false);
+  }
+  cb(null, true);
+};
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 15 * 1024 * 1024 // 15MB limit
+  }
 });
 
-const upload = multer({ storage: storage });
-
-export default upload
+export default upload;

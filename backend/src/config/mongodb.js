@@ -1,11 +1,19 @@
 import mongoose from "mongoose";
 
 const connectDB = async () => {
-    mongoose.connection.on('connected', () => {
-        console.log("✅ MongoDB Connected successfully")
+  try {
+    mongoose.set("strictQuery", true);
+
+    const conn = await mongoose.connect(process.env.MONGODB_URI, {
+      maxPoolSize: 20,
+      serverSelectionTimeoutMS: 5000
     });
 
-    await mongoose.connect(process.env.MONGODB_URI)
-}
+    console.log(`✅ MongoDB Connected: Successfully`);
+  } catch (err) {
+    console.error("❌ MongoDB Connection Failed:", err.message);
+    setTimeout(connectDB, 3000);
+  }
+};
 
 export default connectDB;

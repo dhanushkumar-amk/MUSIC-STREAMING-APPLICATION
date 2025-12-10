@@ -1,63 +1,52 @@
-import { v2 as cloudinary } from 'cloudinary'
-import albumModel from '../models/albumModel.js';
+import { cloudinary } from "../config/cloudinary.js";
+import albumModel from "../models/albumModel.js";
 
-const addAlbum = async (req, res) => {
+/* ADD ALBUM */
+export const addAlbum = async (req, res) => {
+  try {
+    const { name, desc, bgColour } = req.body;
 
-    try {
-        const name = req.body.name;
-        const desc = req.body.desc;
-        const bgColour = req.body.bgColour;
-        const imageFile = req.file;
-        const imageUpload = await cloudinary.uploader.upload(imageFile.path, { resource_type: "image" });
+    if (!req.file)
+      return res.status(400).json({ message: "Album image missing" });
 
-        const albumData = {
-            name,
-            desc,
-            bgColour,
-            image: imageUpload.secure_url,
-        };
+    const imageUpload = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { resource_type: "image" },
+        (err, result) => (err ? reject(err) : resolve(result))
+      );
+      stream.end(req.file.buffer);
+    });
 
-        const album = albumModel(albumData);
-        await album.save();
+    await albumModel.create({
+      name,
+      desc,
+      bgColour,
+      image: imageUpload.secure_url
+    });
 
-        res.json({ success: true, message: "Album Added" });
+    res.json({ success: true, message: "Album added" });
+  } catch (err) {
+    console.error(err);
+    res.json({ success: false });
+  }
+};
 
-    } catch (error) {
+/* LIST ALBUM */
+export const listAlbum = async (req, res) => {
+  try {
+    const albums = await albumModel.find({}).lean();
+    res.json({ success: true, albums });
+  } catch {
+    res.json({ success: false });
+  }
+};
 
-        res.json({ success: false });
-        
-    }
-
-}
-
-const listAlbum = async (req, res) => {
-
-    try {
-
-        const allAlbums = await albumModel.find({});
-        res.json({ success: true, albums: allAlbums });
-
-    } catch (error) {
-
-        res.json({ success: false });
-
-    }
-
-}
-
-const removeAlbum = async (req, res) => {
-
-    try {
-
-        await albumModel.findByIdAndDelete(req.body.id);
-        res.json({ success: true, message: "Album Removed" });
-
-    } catch (error) {
-
-        res.json({ success: false });
-        
-    }
-
-}
-
-export { addAlbum, listAlbum, removeAlbum   }
+/* REMOVE ALBUM */
+export const removeAlbum = async (req, res) => {
+  try {
+    await albumModel.findByIdAndDelete(req.body.id);
+    res.json({ success: true, message: "Album removed" });
+  } catch {
+    res.json({ success: false });
+  }
+};

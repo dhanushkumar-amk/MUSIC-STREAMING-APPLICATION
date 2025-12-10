@@ -1,28 +1,15 @@
 import express from "express";
-import authMiddleware from "../middleware/auth.middleware.js";
-
+import upload from "../middleware/multer.js";
 import {
-  register,
-  login,
-  refreshToken,
-  forgotPassword,
-  resetPassword,
-  logout
-} from "../controllers/auth.controller.js";
+  addAlbum,
+  listAlbum,
+  removeAlbum
+} from "../controllers/albumController.js";
 
-const router = express.Router();
+const albumRouter = express.Router();
 
-router.post("/register", register);
-router.post("/login", login);
+albumRouter.post("/add", upload.single("image"), addAlbum);
+albumRouter.get("/list", listAlbum);
+albumRouter.post("/remove", removeAlbum);
 
-// ❌ OTP LOGIN REMOVED
-// router.post("/login/verify-otp", verifyLoginOTP);
-
-router.post("/refresh-token", refreshToken);
-
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password", resetPassword);
-
-router.post("/logout", authMiddleware, logout);
-
-export default router;
+export default albumRouter;

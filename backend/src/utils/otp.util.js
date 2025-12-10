@@ -1,7 +1,18 @@
-import crypto from "crypto"
+import crypto from "crypto";
 
-export const generateOTP = () =>
-  Math.floor(100000 + Math.random() * 900000).toString()
+/* Generate secure 6-digit OTP */
+export const generateOTP = () => {
+  return crypto.randomInt(100000, 999999).toString();
+};
 
-export const hashOTP = otp =>
-  crypto.createHash("sha256").update(otp).digest("hex")
+/* Hash OTP using SHA256 */
+export const hashOTP = otp => {
+  return crypto.createHash("sha256").update(otp).digest("hex");
+};
+
+/* Safe compare to avoid timing attacks */
+export const safeCompare = (a, b) => {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  return crypto.timingSafeEqual(bufA, bufB);
+};
