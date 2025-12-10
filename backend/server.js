@@ -10,6 +10,9 @@ import songRouter from "./src/routes/songRoute.js"
 import albumRouter from "./src/routes/albumRoute.js"
 
 import authRouter from "./src/routes/auth.route.js"
+import userRoutes from "./src/routes/user.route.js"
+
+
 
 // app config
 const app = express()
@@ -34,6 +37,7 @@ app.use(cors())
 app.use("/api/song", songRouter)
 app.use("/api/album", albumRouter)
 app.use("/api/auth", authRouter)
+app.use("/api/user", userRoutes);
 
 app.get("/", (req, res) => res.send("API Working"))
 

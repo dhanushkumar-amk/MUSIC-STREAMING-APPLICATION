@@ -1,27 +1,28 @@
-import express from "express"
-import authMiddleware from "../middleware/auth.middleware.js"
+import express from "express";
+import authMiddleware from "../middleware/auth.middleware.js";
 
 import {
   register,
   login,
-  verifyLoginOTP,
   refreshToken,
   forgotPassword,
   resetPassword,
   logout
-} from "../controllers/auth.controller.js"
+} from "../controllers/auth.controller.js";
 
-const router = express.Router()
+const router = express.Router();
 
-router.post("/register", register)
-router.post("/login", login)
-router.post("/login/verify-otp", verifyLoginOTP)
+router.post("/register", register);
+router.post("/login", login);
 
-router.post("/refresh-token", refreshToken)
+// ❌ OTP LOGIN REMOVED
+// router.post("/login/verify-otp", verifyLoginOTP);
 
-router.post("/forgot-password", forgotPassword)
-router.post("/reset-password", resetPassword)
+router.post("/refresh-token", refreshToken);
 
-router.post("/logout", authMiddleware, logout)
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 
-export default router
+router.post("/logout", authMiddleware, logout);
+
+export default router;
