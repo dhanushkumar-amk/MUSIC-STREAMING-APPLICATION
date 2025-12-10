@@ -1,18 +1,36 @@
-import jwt from "jsonwebtoken"
+import jwt from "jsonwebtoken";
 
-export const generateAccessToken = userId =>
-  jwt.sign(
-    { userId },
+/* Create Access Token */
+export const generateAccessToken = userId => {
+  return jwt.sign(
+    { sub: userId },
     process.env.JWT_ACCESS_SECRET,
-    { expiresIn: process.env.JWT_ACCESS_EXPIRE }
-  )
+    {
+      expiresIn: process.env.JWT_ACCESS_EXPIRE || "15m",
+      issuer: "spotichat-auth",
+      audience: "spotichat-users"
+    }
+  );
+};
 
-export const generateRefreshToken = userId =>
-  jwt.sign(
-    { userId },
+/* Create Refresh Token */
+export const generateRefreshToken = userId => {
+  return jwt.sign(
+    { sub: userId },
     process.env.JWT_REFRESH_SECRET,
-    { expiresIn: process.env.JWT_REFRESH_EXPIRE }
-  )
+    {
+      expiresIn: process.env.JWT_REFRESH_EXPIRE || "7d",
+      issuer: "spotichat-auth",
+      audience: "spotichat-users"
+    }
+  );
+};
 
-export const verifyRefreshToken = token =>
-  jwt.verify(token, process.env.JWT_REFRESH_SECRET)
+/* Verify Refresh Token safely */
+export const verifyRefreshToken = token => {
+  try {
+    return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+  } catch {
+    return null;
+  }
+};

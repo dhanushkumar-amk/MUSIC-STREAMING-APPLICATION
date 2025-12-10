@@ -1,25 +1,39 @@
-import crypto from "crypto"
-import redis from "../config/redis.js"
+import redis from "../config/redis.js";
 
-export const generateOTP = () =>
-  Math.floor(100000 + Math.random() * 900000).toString()
+/* Save value with TTL */
+export const redisSet = async (key, value, ttl = 300) => {
+  try {
+    const data = typeof value === "string" ? value : JSON.stringify(value);
+    await redis.set(key, data, { ex: ttl });
+    return true;
+  } catch (err) {
+    console.error("Redis SET Error:", err.message);
+    return false;
+  }
+};
 
-export const hashOTP = otp =>
-  crypto.createHash("sha256").update(otp).digest("hex")
+/* Read value from Redis */
+export const redisGet = async key => {
+  try {
+    const value = await redis.get(key);
+    if (!value) return null;
 
-export const saveOTP = async (key, otp, ttl = 300) => {
-  const hashed = hashOTP(otp)
-  await redis.set(key, hashed, { ex: ttl })
-}
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value; // string fallback
+    }
+  } catch (err) {
+    console.error("Redis GET Error:", err.message);
+    return null;
+  }
+};
 
-export const verifyOTP = async (key, otp) => {
-  const stored = await redis.get(key)
-  if (!stored) return false
-
-  const hashed = hashOTP(otp)
-  return stored === hashed
-}
-
-export const deleteKey = async key => {
-  await redis.del(key)
-}
+/* Delete key */
+export const redisDel = async key => {
+  try {
+    await redis.del(key);
+  } catch (err) {
+    console.error("Redis DEL Error:", err.message);
+  }
+};
