@@ -10,6 +10,11 @@ import connectDB from "./src/config/mongodb.js";
 
 import register from "./src/config/prometheus.js";
 
+import { createIndexes } from "./src/search/createIndexes.js";
+import { applyAutocompleteSettings } from "./src/search/applyAutocompleteSettings.js";
+
+
+
 const app = express();
 const port = process.env.PORT || 4000;
 
@@ -26,11 +31,11 @@ app.use(
     hidePoweredBy: true
   })
 );
-
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(compression());
 
+/* GLOBAL RATE LIMITER */
 const globalLimiter = rateLimit({
   windowMs: 60000,
   max: 300,
@@ -42,6 +47,11 @@ app.use(globalLimiter);
 connectCloudinary();
 connectDB();
 
+/* CREATE INDEXES AND APPLY AUTOCOMPLETE SETTINGS */
+createIndexes();
+applyAutocompleteSettings();
+
+
 /* ROUTES */
 import songRouter from "./src/routes/songRoute.js";
 import albumRouter from "./src/routes/albumRoute.js";
@@ -49,7 +59,8 @@ import authRouter from "./src/routes/auth.route.js";
 import userRouter from "./src/routes/user.route.js";
 import libraryRouter from "./src/routes/library.route.js";
 import playlistRouter from "./src/routes/playlist.route.js";
-
+import searchRouter from "./src/routes/search.route.js"
+import autocompleteRouter from "./src/routes/autocomplete.route.js";
 
 
 app.use("/api/song", songRouter);
@@ -58,6 +69,8 @@ app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
 app.use("/api/library", libraryRouter);
 app.use("/api/playlist", playlistRouter);
+app.use("/api/search", searchRouter);
+app.use("/api/autocomplete", autocompleteRouter);
 
 
 

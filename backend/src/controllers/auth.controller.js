@@ -31,6 +31,16 @@ export const register = async (req, res) => {
     password: hashed
   });
 
+
+// === ADD USER TO MEILI ===
+await meili.index("users").addDocuments([
+  {
+    id: user._id.toString(),
+    email
+  }
+]);
+
+
   await sendWelcomeEmail(email);
 
   res.status(201).json({ message: "Registered successfully" });
