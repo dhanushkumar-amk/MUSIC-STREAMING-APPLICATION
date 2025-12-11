@@ -61,6 +61,7 @@ import libraryRouter from "./src/routes/library.route.js";
 import playlistRouter from "./src/routes/playlist.route.js";
 import searchRouter from "./src/routes/search.route.js"
 import autocompleteRouter from "./src/routes/autocomplete.route.js";
+import recentlyPlayedRouter from "./src/routes/recentlyPlayed.route.js";
 
 
 app.use("/api/song", songRouter);
@@ -71,6 +72,7 @@ app.use("/api/library", libraryRouter);
 app.use("/api/playlist", playlistRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/autocomplete", autocompleteRouter);
+app.use("/api/recently-played", recentlyPlayedRouter);
 
 
 
