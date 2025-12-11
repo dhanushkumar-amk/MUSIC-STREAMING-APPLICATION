@@ -13,8 +13,6 @@ import register from "./src/config/prometheus.js";
 import { createIndexes } from "./src/search/createIndexes.js";
 import { applyAutocompleteSettings } from "./src/search/applyAutocompleteSettings.js";
 
-
-
 const app = express();
 const port = process.env.PORT || 4000;
 
@@ -24,13 +22,28 @@ app.get("/metrics", async (req, res) => {
   res.end(await register.metrics());
 });
 
-/* MIDDLEWARE */
+/* VERY IMPORTANT:
+   UPLOAD ROUTES MUST BE REGISTERED BEFORE express.json(), cors(), helmet()
+   OTHERWISE req.files WILL BE UNDEFINED for multer uploads
+*/
+
+/* ROUTES THAT HANDLE FILE UPLOADS FIRST */
+import songRouter from "./src/routes/songRoute.js";
+import albumRouter from "./src/routes/albumRoute.js";
+import audioRouter from "./src/routes/audio.route.js";
+
+app.use("/api/song", songRouter);
+app.use("/api/album", albumRouter);
+app.use("/api/audio", audioRouter);
+
+/* --- NOW JSON + SECURITY MIDDLEWARE CAN LOAD --- */
 app.use(
   helmet({
     crossOriginResourcePolicy: false,
     hidePoweredBy: true
   })
 );
+
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(compression());
@@ -47,25 +60,20 @@ app.use(globalLimiter);
 connectCloudinary();
 connectDB();
 
-/* CREATE INDEXES AND APPLY AUTOCOMPLETE SETTINGS */
+/* CREATE SEARCH INDEXES */
 createIndexes();
 applyAutocompleteSettings();
 
-
-/* ROUTES */
-import songRouter from "./src/routes/songRoute.js";
-import albumRouter from "./src/routes/albumRoute.js";
+/* REMAINING ROUTES (NO FILE UPLOADS) */
 import authRouter from "./src/routes/auth.route.js";
 import userRouter from "./src/routes/user.route.js";
 import libraryRouter from "./src/routes/library.route.js";
 import playlistRouter from "./src/routes/playlist.route.js";
-import searchRouter from "./src/routes/search.route.js"
+import searchRouter from "./src/routes/search.route.js";
 import autocompleteRouter from "./src/routes/autocomplete.route.js";
 import recentlyPlayedRouter from "./src/routes/recentlyPlayed.route.js";
+import playStatsRouter from "./src/routes/playStats.route.js";
 
-
-app.use("/api/song", songRouter);
-app.use("/api/album", albumRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
 app.use("/api/library", libraryRouter);
@@ -73,8 +81,7 @@ app.use("/api/playlist", playlistRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/autocomplete", autocompleteRouter);
 app.use("/api/recently-played", recentlyPlayedRouter);
-
-
+app.use("/api/plays", playStatsRouter);
 
 /* DEFAULT ROUTE */
 app.get("/", (req, res) => res.send("API Working - Production Optimized"));
@@ -88,7 +95,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-/* START */
+/* START SERVER */
 app.listen(port, () =>
   console.log(`🚀 Server running on PORT: ${port}`)
 );

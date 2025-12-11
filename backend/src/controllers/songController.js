@@ -1,51 +1,81 @@
-import { v2 as cloudinary } from 'cloudinary'
-import songModel from '../models/songModel.js';
 import { meili } from "../config/meili.js";
+
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import fs from "fs";
+import { r2 } from "../config/r2.js";
+import songModel from "../models/songModel.js";
 
 const addSong = async (req, res) => {
   try {
-    const name = req.body.name;
-    const desc = req.body.desc;
-    const album = req.body.album;
+    console.log("CONTROLLER FILES:", req.files);
+
+    // VALIDATE FILES
+    if (!req.files || !req.files.audio || !req.files.image) {
+      return res.status(400).json({
+        success: false,
+        message: "Audio and image files are required (fields: audio, image)"
+      });
+    }
 
     const audioFile = req.files.audio[0];
     const imageFile = req.files.image[0];
 
-    const audioUpload = await cloudinary.uploader.upload(audioFile.path, { resource_type: "video" });
-    const imageUpload = await cloudinary.uploader.upload(imageFile.path, { resource_type: "image" });
+    const { name, desc, album } = req.body;
+    if (!name || !desc || !album) {
+      return res.status(400).json({
+        success: false,
+        message: "Fields required: name, desc, album"
+      });
+    }
 
-    const duration = `${Math.floor(audioUpload.duration / 60)}:${Math.floor(audioUpload.duration % 60)}`;
+    // BUILD KEYS
+    const audioKey = `audio/${Date.now()}-${audioFile.originalname}`;
+    const imageKey = `images/${Date.now()}-${imageFile.originalname}`;
 
-    const songData = {
+    // UPLOAD AUDIO
+    await r2.send(
+      new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET,
+        Key: audioKey,
+        Body: fs.createReadStream(audioFile.path),
+        ContentType: audioFile.mimetype,
+      })
+    );
+
+    // UPLOAD IMAGE
+    await r2.send(
+      new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET,
+        Key: imageKey,
+        Body: fs.createReadStream(imageFile.path),
+        ContentType: imageFile.mimetype,
+      })
+    );
+
+    // PUBLIC URLS
+    const audioUrl = `${process.env.R2_PUBLIC_URL}/${audioKey}`;
+    const imageUrl = `${process.env.R2_PUBLIC_URL}/${imageKey}`;
+
+    const song = await songModel.create({
       name,
       desc,
       album,
-      image: imageUpload.secure_url,
-      file: audioUpload.secure_url,
-      duration
-    };
+      image: imageUrl,
+      file: audioUrl,
+      duration: "0:00"
+    });
 
-    const song = new songModel(songData);
-    await song.save();
-
-    // === INDEX TO MEILISEARCH ===
-    await meili.index("songs").addDocuments([
-      {
-        id: song._id.toString(),
-        name,
-        desc,
-        album,
-        image: imageUpload.secure_url
-      }
-    ]);
-
-    res.json({ success: true, message: "Song Added", song });
+    res.json({ success: true, message: "Song Added Successfully", song });
 
   } catch (error) {
-    console.log(error)
-    res.json({ success: false });
+    console.error("ADD SONG ERROR:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
   }
-}
+};
 
 
 const listSong = async (req, res) => {

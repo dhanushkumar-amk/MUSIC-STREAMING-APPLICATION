@@ -1,19 +1,18 @@
 import mongoose from "mongoose";
 
-const songSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true, trim: true, index: true },
-    desc: { type: String, required: true, trim: true },
-    album: { type: String, required: true, index: true },
-    image: { type: String, required: true },
-    file: { type: String, required: true },
-    duration: { type: String, required: true }
-  },
-  { timestamps: true }
-);
+const songSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  desc: { type: String, required: true },
+  album: { type: String, required: true },
+  image: { type: String, required: true },
+  file: { type: String, required: true },
+  duration: { type: String, required: true },
 
-/* Optimize frequent queries */
-songSchema.index({ album: 1 });
-songSchema.index({ name: "text" });
+  // NEW FIELDS
+  playCount: { type: Number, default: 0 },
+  uniqueListeners: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
+}, { timestamps: true });
 
-export default mongoose.models.song || mongoose.model("song", songSchema);
+const songModel = mongoose.models.song || mongoose.model("song", songSchema);
+
+export default songModel;
