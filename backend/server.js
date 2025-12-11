@@ -48,12 +48,16 @@ import albumRouter from "./src/routes/albumRoute.js";
 import authRouter from "./src/routes/auth.route.js";
 import userRouter from "./src/routes/user.route.js";
 import libraryRouter from "./src/routes/library.route.js";
+import playlistRouter from "./src/routes/playlist.route.js";
+
+
 
 app.use("/api/song", songRouter);
 app.use("/api/album", albumRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
 app.use("/api/library", libraryRouter);
+app.use("/api/playlist", playlistRouter);
 
 
 
