@@ -10,7 +10,6 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.948.0",
     "@upstash/redis": "^1.35.7",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",

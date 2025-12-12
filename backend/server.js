@@ -30,11 +30,11 @@ app.get("/metrics", async (req, res) => {
 /* ROUTES THAT HANDLE FILE UPLOADS FIRST */
 import songRouter from "./src/routes/songRoute.js";
 import albumRouter from "./src/routes/albumRoute.js";
-import audioRouter from "./src/routes/audio.route.js";
+
 
 app.use("/api/song", songRouter);
 app.use("/api/album", albumRouter);
-app.use("/api/audio", audioRouter);
+
 
 /* --- NOW JSON + SECURITY MIDDLEWARE CAN LOAD --- */
 app.use(
