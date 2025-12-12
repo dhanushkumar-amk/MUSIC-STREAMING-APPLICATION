@@ -6,6 +6,7 @@ const addSong = async (req, res) => {
     const name = req.body.name;
     const desc = req.body.desc;
     const album = req.body.album;
+    const artist = req.body.artist;
 
     if (!req.files || !req.files.audio || !req.files.image) {
       return res.json({ success: false, message: "Audio & Image are required" });
@@ -32,6 +33,7 @@ const addSong = async (req, res) => {
       album,
       image: imageUpload.secure_url,
       file: audioUpload.secure_url,
+       artist,
       duration
     });
 

@@ -1,13 +1,20 @@
 import express from "express";
 import authMiddleware from "../middleware/auth.middleware.js";
-import { trackPlay, getRecentlyPlayed } from "../controllers/recentlyPlayed.controller.js";
+import {
+  trackStart,
+  trackEnd,
+  getRecentlyPlayed
+} from "../controllers/recentlyPlayed.controller.js";
 
 const router = express.Router();
 
-// Track song play
-router.post("/track", authMiddleware, trackPlay);
+// START session
+router.post("/start", authMiddleware, trackStart);
 
-// Fetch recently played
+// END session
+router.post("/end", authMiddleware, trackEnd);
+
+// LIST recently played
 router.get("/list", authMiddleware, getRecentlyPlayed);
 
 export default router;

@@ -5,9 +5,10 @@ import redis from "../config/redis.js";
 const invalidateCache = userId =>
   redis.del(`cache:playlists:${userId}`);
 
-/* -----------------------------
-   CREATE PLAYLIST
-------------------------------*/
+/* ============================================================================
+   EXISTING PLAYLIST CRUD FUNCTIONS (YOUR ORIGINAL CODE)
+============================================================================ */
+
 export const createPlaylist = async (req, res) => {
   try {
     const { name } = req.body;
@@ -20,16 +21,12 @@ export const createPlaylist = async (req, res) => {
     });
 
     await invalidateCache(req.userId);
-
     res.json({ success: true, playlist });
   } catch {
     res.status(500).json({ message: "Error creating playlist" });
   }
 };
 
-/* -----------------------------
-   RENAME PLAYLIST
-------------------------------*/
 export const renamePlaylist = async (req, res) => {
   try {
     const { playlistId, newName } = req.body;
@@ -50,9 +47,6 @@ export const renamePlaylist = async (req, res) => {
   }
 };
 
-/* -----------------------------
-   DELETE PLAYLIST
-------------------------------*/
 export const deletePlaylist = async (req, res) => {
   try {
     const { playlistId } = req.body;
@@ -69,9 +63,6 @@ export const deletePlaylist = async (req, res) => {
   }
 };
 
-/* -----------------------------
-   ADD SONG (SET FIRST BANNER)
-------------------------------*/
 export const addSongToPlaylist = async (req, res) => {
   try {
     const { playlistId, songId } = req.body;
@@ -92,7 +83,6 @@ export const addSongToPlaylist = async (req, res) => {
       playlist.songs.push(songId);
     }
 
-    // FIRST SONG = BANNER
     if (!playlist.banner) {
       playlist.banner = song.image;
     }
@@ -102,7 +92,7 @@ export const addSongToPlaylist = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Song added to playlist",
+      message: "Song added",
       banner: playlist.banner
     });
   } catch {
@@ -110,9 +100,6 @@ export const addSongToPlaylist = async (req, res) => {
   }
 };
 
-/* -----------------------------
-   REMOVE SONG (AUTO UPDATE BANNER)
-------------------------------*/
 export const removeSongFromPlaylist = async (req, res) => {
   try {
     const { playlistId, songId } = req.body;
@@ -129,17 +116,13 @@ export const removeSongFromPlaylist = async (req, res) => {
       s => s._id.toString() !== songId
     );
 
-    // UPDATE BANNER WHEN REMOVED
-
     if (playlist.songs.length === 0) {
       playlist.banner = null;
-    } else if (
-      playlist.banner &&
-      playlist.banner === (await songModel.findById(songId))?.image
-    ) {
-      // Banner song removed → set new banner to second song
-      const firstSong = playlist.songs[0];
-      playlist.banner = firstSong.image;
+    } else {
+      const removedSong = await songModel.findById(songId);
+      if (removedSong?.image && playlist.banner === removedSong.image) {
+        playlist.banner = playlist.songs[0].image;
+      }
     }
 
     await playlist.save();
@@ -155,9 +138,6 @@ export const removeSongFromPlaylist = async (req, res) => {
   }
 };
 
-/* -----------------------------
-   LIST PLAYLISTS (CACHED)
-------------------------------*/
 export const getPlaylists = async (req, res) => {
   try {
     const key = `cache:playlists:${req.userId}`;
@@ -174,5 +154,130 @@ export const getPlaylists = async (req, res) => {
     res.json({ success: true, playlists });
   } catch {
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+/* ============================================================================
+   NEW PLAYBACK FUNCTIONS (ADDED)
+============================================================================ */
+
+/* START PLAYLIST PLAYBACK → BUILDS QUEUE IN REDIS */
+export const startPlaylistPlayback = async (req, res) => {
+  try {
+    const { playlistId } = req.body;
+
+    const playlist = await Playlist.findOne({
+      _id: playlistId,
+      userId: req.userId
+    });
+
+    if (!playlist)
+      return res.status(404).json({ message: "Playlist not found" });
+
+    let songs = [...playlist.songs];
+
+    if (playlist.shuffleEnabled) {
+      songs = songs.sort(() => Math.random() - 0.5);
+    }
+
+    const queueObj = {
+      queue: songs,
+      currentIndex: 0,
+      shuffle: playlist.shuffleEnabled,
+      loopMode: playlist.loopMode,
+      contextType: "playlist",
+      contextId: playlistId
+    };
+
+    await redis.set(`queue:${req.userId}`, queueObj);
+
+    res.json({ success: true, queue: queueObj });
+  } catch (err) {
+    console.error("start error:", err);
+    res.status(500).json({ message: "Failed to start playback" });
+  }
+};
+
+/* SHUFFLE TOGGLE */
+export const togglePlaylistShuffle = async (req, res) => {
+  try {
+    const { playlistId } = req.body;
+
+    const playlist = await Playlist.findOne({
+      _id: playlistId,
+      userId: req.userId
+    });
+
+    if (!playlist)
+      return res.status(404).json({ message: "Playlist not found" });
+
+    playlist.shuffleEnabled = !playlist.shuffleEnabled;
+    await playlist.save();
+
+    res.json({ success: true, shuffleEnabled: playlist.shuffleEnabled });
+  } catch {
+    res.status(500).json({ message: "Error toggling shuffle" });
+  }
+};
+
+/* LOOP MODE */
+export const updatePlaylistLoop = async (req, res) => {
+  try {
+    const { playlistId, loopMode } = req.body;
+
+    if (!["off", "one", "all"].includes(loopMode))
+      return res.status(400).json({ message: "Invalid loop mode" });
+
+    const playlist = await Playlist.findOne({
+      _id: playlistId,
+      userId: req.userId
+    });
+
+    playlist.loopMode = loopMode;
+    await playlist.save();
+
+    res.json({ success: true, loopMode });
+  } catch {
+    res.status(500).json({ message: "Error updating loop" });
+  }
+};
+
+/* PLAY NEXT */
+export const playlistPlayNext = async (req, res) => {
+  try {
+    const { songId } = req.body;
+    const key = `queue:${req.userId}`;
+
+    const q = await redis.get(key);
+    if (!q) return res.status(400).json({ message: "No queue" });
+
+    q.queue.splice(q.currentIndex + 1, 0, songId);
+
+    await redis.set(key, q);
+
+    res.json({ success: true, queue: q.queue });
+  } catch {
+    res.status(500).json({ message: "Error play next" });
+  }
+};
+
+/* ADD TO QUEUE (BOTTOM) */
+export const playlistAddToQueue = async (req, res) => {
+  try {
+    const { songId } = req.body;
+
+    const key = `queue:${req.userId}`;
+    const q = await redis.get(key);
+
+    if (!q)
+      return res.status(400).json({ message: "No queue" });
+
+    q.queue.push(songId);
+
+    await redis.set(key, q);
+
+    res.json({ success: true, queue: q.queue });
+  } catch {
+    res.status(500).json({ message: "Error adding to queue" });
   }
 };

@@ -73,6 +73,9 @@ import searchRouter from "./src/routes/search.route.js";
 import autocompleteRouter from "./src/routes/autocomplete.route.js";
 import recentlyPlayedRouter from "./src/routes/recentlyPlayed.route.js";
 import playStatsRouter from "./src/routes/playStats.route.js";
+import recommendationRoutes from "./src/routes/recommendation.route.js";
+import queueRoutes from "./src/routes/queue.route.js";
+
 
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
@@ -82,6 +85,10 @@ app.use("/api/search", searchRouter);
 app.use("/api/autocomplete", autocompleteRouter);
 app.use("/api/recently-played", recentlyPlayedRouter);
 app.use("/api/plays", playStatsRouter);
+app.use("/api/recommendation", recommendationRoutes);
+app.use("/api/queue", queueRoutes);
+
+
 
 /* DEFAULT ROUTE */
 app.get("/", (req, res) => res.send("API Working - Production Optimized"));

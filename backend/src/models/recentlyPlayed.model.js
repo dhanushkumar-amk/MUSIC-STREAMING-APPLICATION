@@ -12,6 +12,12 @@ const recentlyPlayedSchema = new mongoose.Schema(
       ref: "song",
       required: true
     },
+    // NEW fields
+    playDuration: { type: Number, default: 0 }, // seconds
+    skipped: { type: Boolean, default: false },
+    contextType: { type: String, default: null }, // 'playlist'|'album'|'liked'|'search' etc
+    contextId: { type: String, default: null }, // optional id of playlist/album
+    // Keep playedAt
     playedAt: {
       type: Date,
       default: Date.now
