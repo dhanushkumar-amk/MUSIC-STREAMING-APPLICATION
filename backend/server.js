@@ -31,6 +31,11 @@ app.get("/metrics", async (req, res) => {
 import songRouter from "./src/routes/songRoute.js";
 import albumRouter from "./src/routes/albumRoute.js";
 
+// Enable CORS for file upload routes
+app.use(cors());
+
+// Enable JSON parsing for all routes (needed for remove endpoints)
+app.use(express.json({ limit: "10mb" }));
 
 app.use("/api/song", songRouter);
 app.use("/api/album", albumRouter);
@@ -44,8 +49,6 @@ app.use(
   })
 );
 
-app.use(cors());
-app.use(express.json({ limit: "10mb" }));
 app.use(compression());
 
 /* GLOBAL RATE LIMITER */
@@ -75,6 +78,7 @@ import recentlyPlayedRouter from "./src/routes/recentlyPlayed.route.js";
 import playStatsRouter from "./src/routes/playStats.route.js";
 import recommendationRoutes from "./src/routes/recommendation.route.js";
 import queueRoutes from "./src/routes/queue.route.js";
+import statsRouter from "./src/routes/stats.route.js";
 
 
 app.use("/api/auth", authRouter);
@@ -87,6 +91,7 @@ app.use("/api/recently-played", recentlyPlayedRouter);
 app.use("/api/plays", playStatsRouter);
 app.use("/api/recommendation", recommendationRoutes);
 app.use("/api/queue", queueRoutes);
+app.use("/api/stats", statsRouter);
 
 
 
