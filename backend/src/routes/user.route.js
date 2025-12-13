@@ -4,9 +4,10 @@ import avatarUpload from "../middleware/avatarUpload.js";
 
 import {
   getProfile,
-  updateDetails,
-  changePassword,
-  uploadAvatar
+  updateProfile,
+  uploadAvatar,
+  getAllUsers,
+  deleteUser
 } from "../controllers/user.controller.js";
 
 const router = express.Router();
@@ -15,10 +16,7 @@ const router = express.Router();
 router.get("/me", authMiddleware, getProfile);
 
 /* UPDATE USER DETAILS */
-router.patch("/me/update", authMiddleware, updateDetails);
-
-/* CHANGE PASSWORD */
-router.patch("/me/change-password", authMiddleware, changePassword);
+router.patch("/me/update", authMiddleware, updateProfile);
 
 /* UPLOAD AVATAR */
 router.patch(
@@ -27,5 +25,11 @@ router.patch(
   avatarUpload.single("avatar"),
   uploadAvatar
 );
+
+/* GET ALL USERS (ADMIN/PUBLIC FOR NOW) */
+router.get("/list", getAllUsers);
+
+/* DELETE USER (ADMIN) */
+router.delete("/:id", deleteUser);
 
 export default router;

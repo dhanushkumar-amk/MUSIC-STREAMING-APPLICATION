@@ -1,0 +1,939 @@
+# Spotify Backend - Complete API Endpoints Reference
+
+## Base URL
+```
+http://localhost:4000
+```
+
+---
+
+## 📊 System Endpoints
+
+### Get Metrics
+```http
+GET /metrics
+```
+**Response:** Prometheus metrics (plain text)
+
+---
+
+## 🔐 Authentication Routes (`/api/auth`)
+
+### 1. Register
+```http
+POST /api/auth/register
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+**Response:**
+```json
+{
+  "message": "Registered successfully"
+}
+```
+
+### 2. Login
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+**Response:**
+```json
+{
+  "message": "OTP sent",
+  "userId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+
+### 3. Verify Login OTP
+```http
+POST /api/auth/login/verify-otp
+Content-Type: application/json
+
+{
+  "userId": "60d5ec49f1b2c72b8c8e4f1a",
+  "otp": "123456"
+}
+```
+**Response:**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+### 4. Refresh Token
+```http
+POST /api/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+**Response:**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+### 5. Forgot Password
+```http
+POST /api/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+```
+**Response:**
+```json
+{
+  "message": "OTP sent",
+  "userId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+
+### 6. Reset Password
+```http
+POST /api/auth/reset-password
+Content-Type: application/json
+
+{
+  "userId": "60d5ec49f1b2c72b8c8e4f1a",
+  "otp": "123456",
+  "newPassword": "newpassword123"
+}
+```
+**Response:**
+```json
+{
+  "message": "Password updated successfully"
+}
+```
+
+### 7. Logout
+```http
+POST /api/auth/logout
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "userId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+**Response:**
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+---
+
+## 👤 User Routes (`/api/user`)
+**All routes require Authorization header**
+
+### 1. Get Profile
+```http
+GET /api/user/me
+Authorization: Bearer {accessToken}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "user": {
+    "_id": "60d5ec49f1b2c72b8c8e4f1a",
+    "email": "user@example.com",
+    "avatar": "https://cloudinary.com/avatar.jpg",
+    "createdAt": "2024-01-01T00:00:00.000Z"
+  }
+}
+```
+
+### 2. Update Details
+```http
+PATCH /api/user/me/update
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "email": "newemail@example.com"
+}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "user": {
+    "_id": "60d5ec49f1b2c72b8c8e4f1a",
+    "email": "newemail@example.com"
+  }
+}
+```
+
+### 3. Change Password
+```http
+PATCH /api/user/me/change-password
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "oldPassword": "oldpassword123",
+  "newPassword": "newpassword123"
+}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Password updated"
+}
+```
+
+### 4. Upload Avatar
+```http
+PATCH /api/user/me/avatar
+Authorization: Bearer {accessToken}
+Content-Type: multipart/form-data
+
+avatar: [Image File]
+```
+**Response:**
+```json
+{
+  "success": true,
+  "avatar": "https://cloudinary.com/new-avatar.jpg",
+  "message": "Avatar updated"
+}
+```
+
+---
+
+## 🎵 Song Routes (`/api/song`)
+
+### 1. Add Song
+```http
+POST /api/song/add
+Content-Type: multipart/form-data
+
+name: Song Name
+desc: Song Description
+album: Album Name
+artist: Artist Name
+audio: [Audio File]
+image: [Image File]
+```
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Song Added",
+  "song": {
+    "_id": "60d5ec49f1b2c72b8c8e4f1a",
+    "name": "Song Name",
+    "desc": "Description",
+    "album": "Album Name",
+    "artist": "Artist Name",
+    "image": "https://cloudinary.com/image.jpg",
+    "file": "https://cloudinary.com/audio.mp3",
+    "duration": "3:45"
+  }
+}
+```
+
+### 2. List Songs
+```http
+GET /api/song/list
+```
+**Response:**
+```json
+{
+  "success": true,
+  "songs": [
+    {
+      "_id": "60d5ec49f1b2c72b8c8e4f1a",
+      "name": "Song Name",
+      "desc": "Description",
+      "album": "Album Name",
+      "artist": "Artist Name",
+      "image": "https://cloudinary.com/image.jpg",
+      "file": "https://cloudinary.com/audio.mp3",
+      "duration": "3:45",
+      "playCount": 100,
+      "uniqueListeners": []
+    }
+  ]
+}
+```
+
+### 3. Remove Song
+```http
+POST /api/song/remove
+Content-Type: application/json
+
+{
+  "id": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Song Removed"
+}
+```
+
+---
+
+## 💿 Album Routes (`/api/album`)
+
+### 1. Add Album
+```http
+POST /api/album/add
+Content-Type: multipart/form-data
+
+name: Album Name
+desc: Album Description
+bgColour: #FF5733
+image: [Image File]
+```
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Album Added",
+  "album": {
+    "_id": "60d5ec49f1b2c72b8c8e4f1a",
+    "name": "Album Name",
+    "desc": "Description",
+    "bgColour": "#FF5733",
+    "image": "https://cloudinary.com/image.jpg"
+  }
+}
+```
+
+### 2. List Albums
+```http
+GET /api/album/list
+```
+**Response:**
+```json
+{
+  "success": true,
+  "albums": [
+    {
+      "_id": "60d5ec49f1b2c72b8c8e4f1a",
+      "name": "Album Name",
+      "desc": "Description",
+      "bgColour": "#FF5733",
+      "image": "https://cloudinary.com/image.jpg"
+    }
+  ]
+}
+```
+
+### 3. Remove Album
+```http
+POST /api/album/remove
+Content-Type: application/json
+
+{
+  "id": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Album Removed"
+}
+```
+
+---
+
+## 📚 Library Routes (`/api/library`)
+**All routes require Authorization**
+
+### Songs
+
+#### Like Song
+```http
+POST /api/library/song/like
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "songId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Song liked"
+}
+```
+
+#### Unlike Song
+```http
+POST /api/library/song/unlike
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "songId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Song unliked"
+}
+```
+
+#### Get Liked Songs
+```http
+GET /api/library/song/list
+Authorization: Bearer {accessToken}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "songs": [
+    {
+      "_id": "60d5ec49f1b2c72b8c8e4f1a",
+      "name": "Song Name",
+      "artist": "Artist Name",
+      "image": "https://cloudinary.com/image.jpg"
+    }
+  ]
+}
+```
+
+### Albums
+
+#### Like Album
+```http
+POST /api/library/album/like
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "albumId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+
+#### Unlike Album
+```http
+POST /api/library/album/unlike
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "albumId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+
+#### Get Liked Albums
+```http
+GET /api/library/album/list
+Authorization: Bearer {accessToken}
+```
+
+---
+
+## 🎧 Playlist Routes (`/api/playlist`)
+**All routes require Authorization**
+
+### 1. Create Playlist
+```http
+POST /api/playlist/create
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "name": "My Playlist"
+}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "playlist": {
+    "_id": "60d5ec49f1b2c72b8c8e4f1a",
+    "name": "My Playlist",
+    "userId": "60d5ec49f1b2c72b8c8e4f1a",
+    "banner": null,
+    "songs": [],
+    "shuffleEnabled": false,
+    "loopMode": "off"
+  }
+}
+```
+
+### 2. Rename Playlist
+```http
+POST /api/playlist/rename
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "playlistId": "60d5ec49f1b2c72b8c8e4f1a",
+  "newName": "Updated Playlist Name"
+}
+```
+
+### 3. Delete Playlist
+```http
+POST /api/playlist/delete
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "playlistId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+
+### 4. Add Song to Playlist
+```http
+POST /api/playlist/add-song
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "playlistId": "60d5ec49f1b2c72b8c8e4f1a",
+  "songId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+
+### 5. Remove Song from Playlist
+```http
+POST /api/playlist/remove-song
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "playlistId": "60d5ec49f1b2c72b8c8e4f1a",
+  "songId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+
+### 6. Get All Playlists
+```http
+GET /api/playlist/list
+Authorization: Bearer {accessToken}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "playlists": [
+    {
+      "_id": "60d5ec49f1b2c72b8c8e4f1a",
+      "name": "My Playlist",
+      "banner": "https://cloudinary.com/banner.jpg",
+      "songs": [...],
+      "shuffleEnabled": false,
+      "loopMode": "off"
+    }
+  ]
+}
+```
+
+### 7. Start Playlist Playback
+```http
+POST /api/playlist/start-playback
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "playlistId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+
+### 8. Toggle Shuffle
+```http
+POST /api/playlist/toggle-shuffle
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "playlistId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+
+### 9. Update Loop Mode
+```http
+POST /api/playlist/update-loop
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "playlistId": "60d5ec49f1b2c72b8c8e4f1a",
+  "loopMode": "off" // "off" | "one" | "all"
+}
+```
+
+### 10. Play Next
+```http
+POST /api/playlist/play-next
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "songId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+
+### 11. Add to Queue
+```http
+POST /api/playlist/add-to-queue
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "songId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+
+---
+
+## 🎼 Queue Routes (`/api/queue`)
+**All routes require Authorization**
+
+### 1. Start Queue
+```http
+POST /api/queue/start
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "songIds": ["60d5ec49f1b2c72b8c8e4f1a", "60d5ec49f1b2c72b8c8e4f1b"],
+  "contextType": "playlist",
+  "contextId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "queue": {
+    "queue": ["60d5ec49f1b2c72b8c8e4f1a"],
+    "currentIndex": 0,
+    "shuffle": false,
+    "loopMode": "off",
+    "contextType": "playlist",
+    "contextId": "60d5ec49f1b2c72b8c8e4f1a"
+  }
+}
+```
+
+### 2. Get Queue State
+```http
+GET /api/queue/state
+Authorization: Bearer {accessToken}
+```
+
+### 3. Next Song
+```http
+GET /api/queue/next
+Authorization: Bearer {accessToken}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "song": {
+    "_id": "60d5ec49f1b2c72b8c8e4f1a",
+    "name": "Song Name",
+    "artist": "Artist Name"
+  }
+}
+```
+
+### 4. Previous Song
+```http
+GET /api/queue/previous
+Authorization: Bearer {accessToken}
+```
+
+### 5. Toggle Shuffle
+```http
+POST /api/queue/shuffle
+Authorization: Bearer {accessToken}
+```
+
+### 6. Update Loop Mode
+```http
+POST /api/queue/loop
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "loopMode": "all" // "off" | "one" | "all"
+}
+```
+
+### 7. Add to Queue
+```http
+POST /api/queue/add
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "songId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+
+### 8. Play Next
+```http
+POST /api/queue/play-next
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "songId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+
+### 9. Remove from Queue
+```http
+POST /api/queue/remove
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "songId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+
+### 10. Clear Queue
+```http
+DELETE /api/queue/clear
+Authorization: Bearer {accessToken}
+```
+
+---
+
+## 🔍 Search Routes
+
+### Global Search
+```http
+GET /api/search?q=search-term
+```
+**Response:**
+```json
+{
+  "success": true,
+  "results": {
+    "songs": [{...}],
+    "albums": [{...}],
+    "users": [{...}]
+  }
+}
+```
+
+### Autocomplete Search
+```http
+GET /api/autocomplete?q=search-term
+```
+**Response:**
+```json
+{
+  "success": true,
+  "suggestions": {
+    "songs": [{...}],
+    "albums": [{...}],
+    "users": [{...}]
+  }
+}
+```
+
+---
+
+## 🕐 Recently Played Routes (`/api/recently-played`)
+**All routes require Authorization**
+
+### 1. Track Start
+```http
+POST /api/recently-played/start
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "songId": "60d5ec49f1b2c72b8c8e4f1a",
+  "contextType": "playlist",
+  "contextId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "entryId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+
+### 2. Track End
+```http
+POST /api/recently-played/end
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "entryId": "60d5ec49f1b2c72b8c8e4f1a",
+  "playDuration": 180,
+  "skipped": false
+}
+```
+
+### 3. Get Recently Played
+```http
+GET /api/recently-played/list
+Authorization: Bearer {accessToken}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "recent": [
+    {
+      "id": "60d5ec49f1b2c72b8c8e4f1a",
+      "playedAt": "2024-01-01T00:00:00.000Z",
+      "song": {...},
+      "playDuration": 180,
+      "skipped": false
+    }
+  ],
+  "cached": false
+}
+```
+
+---
+
+## 📊 Play Stats Routes (`/api/plays`)
+
+### 1. Increment Play Count
+```http
+POST /api/plays/play
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "songId": "60d5ec49f1b2c72b8c8e4f1a"
+}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Play count updated"
+}
+```
+
+### 2. Get Song Stats (Admin)
+```http
+GET /api/plays/stats
+```
+**Response:**
+```json
+{
+  "success": true,
+  "stats": [
+    {
+      "id": "60d5ec49f1b2c72b8c8e4f1a",
+      "name": "Song Name",
+      "playCount": 1000,
+      "uniqueListeners": 250
+    }
+  ]
+}
+```
+
+---
+
+## 🎯 Recommendation Routes (`/api/recommendation`)
+
+### Get Home Feed
+```http
+GET /api/recommendation/home
+Authorization: Bearer {accessToken}
+```
+**Response:**
+```json
+{
+  "success": true,
+  "feed": {
+    "recentlyPlayed": [{...}],
+    "becauseYouListened": [{...}],
+    "trendingNow": [{...}],
+    "topPicksForYou": [{...}]
+  },
+  "cached": false
+}
+```
+
+---
+
+## 🔑 Authentication Headers
+
+For protected routes, include:
+```http
+Authorization: Bearer {accessToken}
+```
+
+## ⚠️ Error Responses
+
+### 400 Bad Request
+```json
+{
+  "message": "Invalid input"
+}
+```
+
+### 401 Unauthorized
+```json
+{
+  "message": "Invalid or expired token"
+}
+```
+
+### 404 Not Found
+```json
+{
+  "message": "Resource not found"
+}
+```
+
+### 500 Server Error
+```json
+{
+  "success": false,
+  "message": "Internal server error"
+}
+```
+
+---
+
+## 📝 Notes
+
+1. **File Uploads**: Use `multipart/form-data` for audio/image uploads
+2. **Authentication**: Most endpoints require `Bearer token` in Authorization header
+3. **Rate Limiting**: Global limit of 300 requests per minute
+4. **Cache**: Some endpoints use Redis caching (5 min TTL)
+5. **Search**: Uses MeiliSearch for fast full-text search
