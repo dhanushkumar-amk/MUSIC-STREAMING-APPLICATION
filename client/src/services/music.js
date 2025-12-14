@@ -42,36 +42,79 @@ export const albumService = {
 
 // ==================== PLAYLIST SERVICES ====================
 export const playlistService = {
-  create: async (name) => {
-    const response = await api.post('/playlist/create', { name });
+  // Create playlist with description and privacy
+  create: async (name, desc = "", isPublic = false) => {
+    const response = await api.post('/playlist/create', { name, desc, isPublic });
     return response.data;
   },
 
+  // Get all user playlists
   list: async () => {
     const response = await api.get('/playlist/list');
     return response.data;
   },
 
+  // Get single playlist
+  get: async (playlistId) => {
+    const response = await api.get(`/playlist/${playlistId}`);
+    return response.data;
+  },
+
+  // Update playlist
+  update: async (playlistId, updates) => {
+    const response = await api.put('/playlist/update', { playlistId, ...updates });
+    return response.data;
+  },
+
+  // Rename playlist (legacy)
   rename: async (playlistId, newName) => {
     const response = await api.post('/playlist/rename', { playlistId, newName });
     return response.data;
   },
 
+  // Delete playlist
   delete: async (playlistId) => {
-    const response = await api.post('/playlist/delete', { playlistId });
+    const response = await api.delete('/playlist/delete', { data: { playlistId } });
     return response.data;
   },
 
+  // Add song to playlist
   addSong: async (playlistId, songId) => {
     const response = await api.post('/playlist/add-song', { playlistId, songId });
     return response.data;
   },
 
+  // Remove song from playlist
   removeSong: async (playlistId, songId) => {
     const response = await api.post('/playlist/remove-song', { playlistId, songId });
     return response.data;
   },
 
+  // Reorder playlist songs
+  reorder: async (playlistId, songIds) => {
+    const response = await api.post('/playlist/reorder', { playlistId, songIds });
+    return response.data;
+  },
+
+  // Toggle collaborative
+  toggleCollaborative: async (playlistId) => {
+    const response = await api.post('/playlist/toggle-collaborative', { playlistId });
+    return response.data;
+  },
+
+  // Add collaborator
+  addCollaborator: async (playlistId, collaboratorId) => {
+    const response = await api.post('/playlist/add-collaborator', { playlistId, collaboratorId });
+    return response.data;
+  },
+
+  // Remove collaborator
+  removeCollaborator: async (playlistId, collaboratorId) => {
+    const response = await api.post('/playlist/remove-collaborator', { playlistId, collaboratorId });
+    return response.data;
+  },
+
+  // Playback controls
   startPlayback: async (playlistId) => {
     const response = await api.post('/playlist/start-playback', { playlistId });
     return response.data;
@@ -178,16 +221,43 @@ export const queueService = {
 
 // ==================== SEARCH SERVICES ====================
 export const searchService = {
+  // Global search
   search: async (query) => {
     const response = await api.get(`/search?q=${encodeURIComponent(query)}`);
     return response.data;
   },
 
+  // Autocomplete search
   autocomplete: async (query) => {
-    const response = await api.get(`/autocomplete?q=${encodeURIComponent(query)}`);
+    const response = await api.get(`/search/autocomplete?q=${encodeURIComponent(query)}`);
+    return response.data;
+  },
+
+  // Save recent search
+  saveRecent: async (query, type = 'query', resultId = null) => {
+    const response = await api.post('/search/recent', { query, type, resultId });
+    return response.data;
+  },
+
+  // Get recent searches
+  getRecent: async () => {
+    const response = await api.get('/search/recent');
+    return response.data;
+  },
+
+  // Clear all recent searches
+  clearRecent: async () => {
+    const response = await api.delete('/search/recent');
+    return response.data;
+  },
+
+  // Delete single recent search
+  deleteRecent: async (searchId) => {
+    const response = await api.delete(`/search/recent/${searchId}`);
     return response.data;
   },
 };
+
 
 // ==================== RECENTLY PLAYED SERVICES ====================
 export const recentlyPlayedService = {

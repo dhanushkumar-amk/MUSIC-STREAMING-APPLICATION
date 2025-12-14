@@ -3,13 +3,19 @@ import authMiddleware from "../middleware/auth.middleware.js";
 
 import {
   createPlaylist,
+  getPlaylists,
+  getPlaylist,
+  updatePlaylist,
   renamePlaylist,
   deletePlaylist,
   addSongToPlaylist,
   removeSongFromPlaylist,
-  getPlaylists,
+  reorderPlaylistSongs,
+  toggleCollaborative,
+  addCollaborator,
+  removeCollaborator,
 
-  // NEW IMPORTS
+  // Playback routes (stubs)
   startPlaylistPlayback,
   togglePlaylistShuffle,
   updatePlaylistLoop,
@@ -20,15 +26,25 @@ import {
 const router = express.Router();
 router.use(authMiddleware);
 
-// EXISTING ROUTES
+// CRUD Routes
 router.post("/create", createPlaylist);
-router.post("/rename", renamePlaylist);
-router.post("/delete", deletePlaylist);
+router.get("/list", getPlaylists);
+router.get("/:playlistId", getPlaylist);
+router.put("/update", updatePlaylist);
+router.post("/rename", renamePlaylist); // Legacy support
+router.delete("/delete", deletePlaylist);
+
+// Song Management
 router.post("/add-song", addSongToPlaylist);
 router.post("/remove-song", removeSongFromPlaylist);
-router.get("/list", getPlaylists);
+router.post("/reorder", reorderPlaylistSongs);
 
-// NEW PLAYBACK ROUTES
+// Collaborative Features
+router.post("/toggle-collaborative", toggleCollaborative);
+router.post("/add-collaborator", addCollaborator);
+router.post("/remove-collaborator", removeCollaborator);
+
+// Playback Routes (stubs)
 router.post("/start-playback", startPlaylistPlayback);
 router.post("/toggle-shuffle", togglePlaylistShuffle);
 router.post("/update-loop", updatePlaylistLoop);

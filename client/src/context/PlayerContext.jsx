@@ -52,6 +52,23 @@ export const PlayerProvider = ({ children }) => {
     };
   }, [track, loopMode]);
 
+  // Load queue state from backend on mount
+  useEffect(() => {
+    const loadQueueState = async () => {
+      try {
+        const response = await queueService.getState();
+        if (response.success && response.queue) {
+          setShuffle(response.queue.shuffle || false);
+          setLoopMode(response.queue.loopMode || 'off');
+        }
+      } catch (error) {
+        // Queue doesn't exist yet, that's okay
+        console.log('No existing queue state');
+      }
+    };
+    loadQueueState();
+  }, []);
+
   // Track play start for analytics
   const trackPlayStart = async (songId) => {
     try {
@@ -93,9 +110,18 @@ export const PlayerProvider = ({ children }) => {
         await trackPlayEnd(true);
       }
 
+      const newQueue = playlist.length > 0 ? playlist : [song];
       setTrack(song);
-      setQueue(playlist.length > 0 ? playlist : [song]);
+      setQueue(newQueue);
       setCurrentIndex(index);
+
+      // Initialize backend queue
+      try {
+        const songIds = newQueue.map(s => s._id);
+        await queueService.start(songIds, 'manual', null);
+      } catch (queueError) {
+        console.error('Failed to initialize queue:', queueError);
+      }
 
       // Track new song start
       await trackPlayStart(song._id);
@@ -297,6 +323,7 @@ export const PlayerProvider = ({ children }) => {
     duration,
     volume,
     queue,
+    setQueue,
     currentIndex,
     shuffle,
     loopMode,

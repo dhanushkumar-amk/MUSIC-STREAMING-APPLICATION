@@ -58,22 +58,20 @@ export const trackEnd = async (req, res) => {
     // 2. Invalidate cache
     await redis.del(`recent:${userId}`);
 
-    // 3. UPDATE RECOMMENDATION TABLE
-    let rec = await Recommendation.findOne({ songId: entry.songId });
-
-    if (!rec) {
-      rec = await Recommendation.create({ songId: entry.songId });
-    }
-
-    if (skipped) {
-      rec.globalSkipCount += 1;
-    } else {
-      rec.globalPlayCount += 1;
-    }
+    // 3. UPDATE RECOMMENDATION TABLE (use upsert to avoid duplicate key error)
+    const rec = await Recommendation.findOneAndUpdate(
+      { songId: entry.songId },
+      {
+        $inc: {
+          globalSkipCount: skipped ? 1 : 0,
+          globalPlayCount: skipped ? 0 : 1
+        }
+      },
+      { upsert: true, new: true }
+    );
 
     // Weighted score (you can adjust formula later)
     rec.weightedScore = rec.globalPlayCount - rec.globalSkipCount * 0.5;
-
     await rec.save();
 
     return res.json({ success: true, message: "Session ended" });
