@@ -121,7 +121,7 @@ const HomePage = () => {
           </div>
 
           <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4'>
-            {recentlyPlayed.map((item, index) => (
+            {recentlyPlayed.filter(item => item.song).map((item, index) => (
               <motion.div
                 key={item.id}
                 initial={{ opacity: 0, y: 20 }}
