@@ -1,30 +1,49 @@
 import React from 'react';
 import { usePlayer } from '../context/PlayerContext';
 import { Play } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const SongItem = ({ image, name, desc, id }) => {
   const { playWithId } = usePlayer();
 
   return (
-    <div
-      className='min-w-[180px] p-4 px-3 rounded-lg cursor-pointer hover:bg-white/10 transition-all group'
+    <motion.div
+      whileHover={{ y: -4 }}
+      className='cursor-pointer group'
+      onClick={() => playWithId(id)}
     >
-      <div className='relative'>
-        <img
-          className='rounded-lg w-full aspect-square object-cover mb-4'
-          src={image}
-          alt={name}
-        />
-        <button
-          onClick={() => playWithId(id)}
-          className='absolute bottom-2 right-2 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all shadow-xl hover:scale-105'
-        >
-          <Play className='w-5 h-5 text-black fill-black ml-0.5' />
-        </button>
+      {/* Image */}
+      <div className='relative overflow-hidden rounded-xl mb-3 bg-gray-100 shadow-sm'>
+        <div className="relative aspect-square">
+          <img
+            className='w-full h-full object-cover transition-transform duration-500 group-hover:scale-105'
+            src={image}
+            alt={name}
+          />
+
+          {/* Play Button Overlay */}
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+            <motion.div
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              className='w-14 h-14 bg-emerald-500 hover:bg-emerald-600 rounded-full flex items-center justify-center shadow-2xl transition-colors'
+            >
+              <Play className='w-6 h-6 text-white fill-white ml-0.5' />
+            </motion.div>
+          </div>
+        </div>
       </div>
-      <p className='font-bold mb-1 truncate'>{name}</p>
-      <p className='text-slate-400 text-sm truncate'>{desc}</p>
-    </div>
+
+      {/* Song Info */}
+      <div className="space-y-1">
+        <p className='font-semibold text-gray-900 truncate text-sm'>
+          {name}
+        </p>
+        <p className='text-gray-500 text-xs truncate'>
+          {desc}
+        </p>
+      </div>
+    </motion.div>
   );
 };
 

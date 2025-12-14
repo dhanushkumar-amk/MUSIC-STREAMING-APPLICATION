@@ -1,175 +1,303 @@
-import { useEffect, useState } from "react";
-import { playlistService } from "../services/music";
-import { usePlayer } from "../context/PlayerContext";
-import { Play, Plus, Music, MoreHorizontal, Trash2, Edit2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from 'react';
+import { Plus, Music, Play, MoreVertical, Trash2, Edit2, Lock, Unlock, Users } from 'lucide-react';
+import { playlistService } from '../services/music';
+import { usePlayer } from '../context/PlayerContext';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import CreatePlaylistModal from '../components/playlists/CreatePlaylistModal';
+import EditPlaylistModal from '../components/playlists/EditPlaylistModal';
+import DeleteConfirmModal from '../components/playlists/DeleteConfirmModal';
 
 export default function PlaylistsPage() {
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [newPlaylistName, setNewPlaylistName] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingPlaylist, setEditingPlaylist] = useState(null);
+  const [deletingPlaylist, setDeletingPlaylist] = useState(null);
+  const [activeMenu, setActiveMenu] = useState(null);
+
+  const { playSong } = usePlayer();
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchPlaylists();
+    loadPlaylists();
   }, []);
 
-  const fetchPlaylists = async () => {
+  const loadPlaylists = async () => {
     try {
-      const data = await playlistService.list();
-      if (data.success) {
-        setPlaylists(data.playlists);
+      setLoading(true);
+      const response = await playlistService.list();
+      if (response.success) {
+        setPlaylists(response.playlists);
       }
     } catch (error) {
-      console.error("Failed to fetch playlists:", error);
+      console.error('Failed to load playlists:', error);
+      toast.error('Failed to load playlists');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreatePlaylist = async (e) => {
-    e.preventDefault();
-    if (!newPlaylistName.trim()) return;
-
+  const handleCreatePlaylist = async (name, desc, isPublic) => {
     try {
-      const data = await playlistService.create(newPlaylistName);
-      if (data.success) {
-        setPlaylists([...playlists, data.playlist]);
-        setNewPlaylistName("");
-        setIsDialogOpen(false);
-        toast.success("Playlist created");
+      const response = await playlistService.create(name, desc, isPublic);
+      if (response.success) {
+        toast.success('Playlist created!');
+        setShowCreateModal(false);
+        await loadPlaylists();
       }
     } catch (error) {
-      toast.error("Failed to create playlist");
+      console.error('Failed to create playlist:', error);
+      toast.error('Failed to create playlist');
+    }
+  };
+
+  const handleUpdatePlaylist = async (playlistId, updates) => {
+    try {
+      const response = await playlistService.update(playlistId, updates);
+      if (response.success) {
+        toast.success('Playlist updated!');
+        setEditingPlaylist(null);
+        await loadPlaylists();
+      }
+    } catch (error) {
+      console.error('Failed to update playlist:', error);
+      toast.error('Failed to update playlist');
     }
   };
 
   const handleDeletePlaylist = async (playlistId) => {
     try {
-      await playlistService.delete(playlistId);
-      setPlaylists(playlists.filter(p => p._id !== playlistId));
-      toast.success("Playlist deleted");
+      const response = await playlistService.delete(playlistId);
+      if (response.success) {
+        toast.success('Playlist deleted');
+        setDeletingPlaylist(null);
+        await loadPlaylists();
+      }
     } catch (error) {
-      toast.error("Failed to delete playlist");
+      console.error('Failed to delete playlist:', error);
+      toast.error('Failed to delete playlist');
+    }
+  };
+
+  const handlePlayPlaylist = async (playlist) => {
+    if (playlist.songs && playlist.songs.length > 0) {
+      await playSong(playlist.songs[0], playlist.songs, 0);
+      toast.success(`Playing ${playlist.name}`);
+    } else {
+      toast.error('Playlist is empty');
+    }
+  };
+
+  const handleToggleCollaborative = async (playlistId) => {
+    try {
+      const response = await playlistService.toggleCollaborative(playlistId);
+      if (response.success) {
+        toast.success(response.message);
+        await loadPlaylists();
+      }
+    } catch (error) {
+      console.error('Failed to toggle collaborative:', error);
+      toast.error('Failed to update playlist');
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+      <div className="flex items-center justify-center h-screen">
+        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-4xl font-extrabold tracking-tight mb-2">Your Playlists</h1>
-          <p className="text-muted-foreground">Create and manage your playlists</p>
-        </div>
-
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Create Playlist
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Playlist</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreatePlaylist} className="space-y-4">
-              <Input
-                value={newPlaylistName}
-                onChange={(e) => setNewPlaylistName(e.target.value)}
-                placeholder="My Awesome Playlist"
-                autoFocus
-              />
-              <Button type="submit" className="w-full">Create</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+    <div className="p-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">Your Playlists</h1>
+        <p className="text-gray-600">Create and manage your music collections</p>
       </div>
 
-      {playlists.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+      {/* Create Playlist Button */}
+      <button
+        onClick={() => setShowCreateModal(true)}
+        className="mb-8 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full font-medium flex items-center gap-2 transition-colors shadow-lg hover:shadow-xl"
+      >
+        <Plus className="w-5 h-5" />
+        Create Playlist
+      </button>
+
+      {/* Playlists Grid */}
+      {playlists.length === 0 ? (
+        <div className="text-center py-20">
+          <Music className="w-20 h-20 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-2xl font-semibold text-gray-700 mb-2">No playlists yet</h3>
+          <p className="text-gray-500 mb-6">Create your first playlist to get started</p>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full font-medium inline-flex items-center gap-2 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Create Playlist
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {playlists.map((playlist) => (
             <div
               key={playlist._id}
-              className="group cursor-pointer"
+              className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 group"
             >
+              {/* Playlist Cover */}
               <div
+                className="relative aspect-square bg-gradient-to-br from-emerald-400 to-emerald-600 cursor-pointer"
                 onClick={() => navigate(`/playlist/${playlist._id}`)}
-                className="relative mb-4 overflow-hidden rounded-2xl shadow-lg aspect-square bg-gradient-to-br from-muted to-muted/50"
               >
                 {playlist.banner ? (
                   <img
                     src={playlist.banner}
                     alt={playlist.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    className="w-full h-full object-cover"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <Music className="w-16 h-16 text-muted-foreground" />
+                    <Music className="w-20 h-20 text-white/50" />
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <button className="absolute bottom-4 right-4 w-12 h-12 bg-primary rounded-full flex items-center justify-center opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all shadow-xl hover:scale-110">
-                  <Play className="w-5 h-5 text-primary-foreground fill-current ml-0.5" />
-                </button>
-              </div>
 
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold truncate text-base mb-1">{playlist.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {playlist.songs?.length || 0} songs
-                  </p>
+                {/* Play Button Overlay */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePlayPlaylist(playlist);
+                  }}
+                  className="absolute bottom-4 right-4 w-14 h-14 bg-emerald-600 hover:bg-emerald-700 rounded-full flex items-center justify-center text-white shadow-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300"
+                >
+                  <Play className="w-6 h-6 fill-current ml-0.5" />
+                </button>
+
+                {/* Privacy Badge */}
+                <div className="absolute top-3 left-3">
+                  {playlist.isPublic ? (
+                    <div className="px-2 py-1 bg-white/90 rounded-full flex items-center gap-1 text-xs font-medium text-gray-700">
+                      <Unlock className="w-3 h-3" />
+                      Public
+                    </div>
+                  ) : (
+                    <div className="px-2 py-1 bg-white/90 rounded-full flex items-center gap-1 text-xs font-medium text-gray-700">
+                      <Lock className="w-3 h-3" />
+                      Private
+                    </div>
+                  )}
                 </div>
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="p-2 hover:bg-card rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => navigate(`/playlist/${playlist._id}`)}>
-                      <Edit2 className="w-4 h-4 mr-2" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleDeletePlaylist(playlist._id)}
-                      className="text-destructive"
+                {/* Collaborative Badge */}
+                {playlist.collaborative && (
+                  <div className="absolute top-3 right-3">
+                    <div className="px-2 py-1 bg-white/90 rounded-full flex items-center gap-1 text-xs font-medium text-gray-700">
+                      <Users className="w-3 h-3" />
+                      Collab
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Playlist Info */}
+              <div className="p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/playlist/${playlist._id}`)}>
+                    <h3 className="font-bold text-gray-900 truncate text-lg mb-1">
+                      {playlist.name}
+                    </h3>
+                    {playlist.desc && (
+                      <p className="text-sm text-gray-600 line-clamp-2">{playlist.desc}</p>
+                    )}
+                  </div>
+
+                  {/* Menu Button */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setActiveMenu(activeMenu === playlist._id ? null : playlist._id)}
+                      className="p-2 rounded-full hover:bg-gray-100 transition-colors"
                     >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                      <MoreVertical className="w-5 h-5 text-gray-600" />
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {activeMenu === playlist._id && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-10"
+                          onClick={() => setActiveMenu(null)}
+                        />
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-20">
+                          <button
+                            onClick={() => {
+                              setEditingPlaylist(playlist);
+                              setActiveMenu(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                            Edit Details
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleToggleCollaborative(playlist._id);
+                              setActiveMenu(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                          >
+                            <Users className="w-4 h-4" />
+                            {playlist.collaborative ? 'Make Private' : 'Make Collaborative'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setDeletingPlaylist(playlist);
+                              setActiveMenu(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete Playlist
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-sm text-gray-500">
+                  {playlist.songs?.length || 0} {playlist.songs?.length === 1 ? 'song' : 'songs'}
+                </p>
               </div>
             </div>
           ))}
         </div>
-      ) : (
-        <div className="text-center py-12">
-          <Music className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-xl font-bold mb-2">No playlists yet</h3>
-          <p className="text-muted-foreground mb-4">Create your first playlist to get started</p>
-          <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Create Playlist
-          </Button>
-        </div>
+      )}
+
+      {/* Modals */}
+      {showCreateModal && (
+        <CreatePlaylistModal
+          onClose={() => setShowCreateModal(false)}
+          onCreate={handleCreatePlaylist}
+        />
+      )}
+
+      {editingPlaylist && (
+        <EditPlaylistModal
+          playlist={editingPlaylist}
+          onClose={() => setEditingPlaylist(null)}
+          onUpdate={handleUpdatePlaylist}
+        />
+      )}
+
+      {deletingPlaylist && (
+        <DeleteConfirmModal
+          playlist={deletingPlaylist}
+          onClose={() => setDeletingPlaylist(null)}
+          onConfirm={() => handleDeletePlaylist(deletingPlaylist._id)}
+        />
       )}
     </div>
   );

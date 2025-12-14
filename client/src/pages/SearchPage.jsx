@@ -1,259 +1,324 @@
-import { useState, useEffect } from "react";
-import { usePlayer } from "../context/PlayerContext";
-import { Search as SearchIcon, Play, Music, Disc, User } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { searchService } from "../services/music";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState, useEffect, useCallback } from 'react';
+import { searchService } from '../services/music';
+import { usePlayer } from '../context/PlayerContext';
+import { Search, Music, Disc, User, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import SongItem from '../components/SongItem';
+import AlbumItem from '../components/AlbumItem';
+import { debounce } from 'lodash';
+import toast from 'react-hot-toast';
 
 export default function SearchPage() {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [results, setResults] = useState(null);
+  const [suggestions, setSuggestions] = useState(null);
   const [loading, setLoading] = useState(false);
-  const { playSong } = usePlayer();
+  const [activeTab, setActiveTab] = useState('all');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const { playWithId } = usePlayer();
 
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(async () => {
-      if (query.trim()) {
-        setLoading(true);
-        try {
-          const data = await searchService.search(query);
-          if (data.success) {
-            setResults(data.results);
-          }
-        } catch (error) {
-          console.error("Search failed", error);
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        setResults(null);
+  // Debounced autocomplete
+  const fetchSuggestions = useCallback(
+    debounce(async (searchQuery) => {
+      if (!searchQuery.trim()) {
+        setSuggestions(null);
+        return;
       }
-    }, 500);
 
-    return () => clearTimeout(delayDebounceFn);
-  }, [query]);
+      try {
+        const data = await searchService.autocomplete(searchQuery);
+        if (data.success) {
+          setSuggestions(data.suggestions);
+        }
+      } catch (error) {
+        console.error('Autocomplete failed:', error);
+      }
+    }, 300),
+    []
+  );
 
-  const categories = [
-    { name: 'Pop', color: 'from-pink-500 to-rose-500' },
-    { name: 'Rock', color: 'from-red-500 to-orange-500' },
-    { name: 'Hip-Hop', color: 'from-purple-500 to-indigo-500' },
-    { name: 'Indie', color: 'from-teal-500 to-cyan-500' },
-    { name: 'Jazz', color: 'from-amber-500 to-yellow-500' },
-    { name: 'Electronic', color: 'from-blue-500 to-violet-500' },
-    { name: 'Classical', color: 'from-emerald-500 to-green-500' },
-    { name: 'R&B', color: 'from-fuchsia-500 to-pink-500' },
+  // Full search
+  const handleSearch = async (searchQuery) => {
+    if (!searchQuery.trim()) {
+      setResults(null);
+      return;
+    }
+
+    setLoading(true);
+    setShowSuggestions(false);
+
+    try {
+      const data = await searchService.search(searchQuery);
+      if (data.success) {
+        setResults(data.results);
+      }
+    } catch (error) {
+      console.error('Search failed:', error);
+      toast.error('Search failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (value) => {
+    setQuery(value);
+    setShowSuggestions(true);
+    fetchSuggestions(value);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    handleSearch(query);
+  };
+
+  const clearSearch = () => {
+    setQuery('');
+    setResults(null);
+    setSuggestions(null);
+    setShowSuggestions(false);
+  };
+
+  const tabs = [
+    { id: 'all', label: 'All' },
+    { id: 'songs', label: 'Songs' },
+    { id: 'albums', label: 'Albums' },
   ];
 
+  const getFilteredResults = () => {
+    if (!results) return null;
+
+    if (activeTab === 'all') return results;
+    if (activeTab === 'songs') return { songs: results.songs || [] };
+    if (activeTab === 'albums') return { albums: results.albums || [] };
+    return results;
+  };
+
+  const filteredResults = getFilteredResults();
+
   return (
-    <div className="p-6">
-      {/* Search Input */}
-      <div className="relative mb-8 max-w-2xl mx-auto md:mx-0">
-        <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="What do you want to play?"
-          className="pl-12 py-6 text-lg rounded-full bg-card/50 backdrop-blur border-border/50 ring-0 focus-visible:ring-2 focus-visible:ring-primary shadow-lg"
-        />
-      </div>
+    <div className="min-h-full bg-white p-6">
+      {/* Search Header */}
+      <div className="max-w-4xl mx-auto mb-8">
+        <h1 className="text-5xl font-bold text-gray-900 mb-6">Search</h1>
 
-      {loading && (
-        <div className="text-center text-muted-foreground py-12">
-          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-          Searching...
-        </div>
-      )}
+        {/* Search Input */}
+        <form onSubmit={handleSubmit} className="relative">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onFocus={() => setShowSuggestions(true)}
+              placeholder="What do you want to listen to?"
+              className="w-full pl-12 pr-12 py-4 bg-gray-50 border-2 border-gray-200 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition-colors"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            )}
+          </div>
 
-      {results ? (
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="songs">Songs</TabsTrigger>
-            <TabsTrigger value="albums">Albums</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="all" className="space-y-8">
-            {/* Top Result */}
-            {(results.songs?.length > 0 || results.albums?.length > 0) && (
-              <div>
-                <h2 className="text-2xl font-bold mb-4">Top Result</h2>
-                {results.songs?.[0] && (
-                  <div
-                    onClick={() => playSong(results.songs[0])}
-                    className="bg-card/40 backdrop-blur p-6 rounded-2xl hover:bg-card/60 transition-all cursor-pointer group max-w-md"
-                  >
-                    <div className="flex items-center gap-4 mb-4">
-                      <img
-                        src={results.songs[0].image}
-                        alt={results.songs[0].name}
-                        className="w-24 h-24 rounded-xl object-cover shadow-lg"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-3xl font-bold mb-1 truncate">{results.songs[0].name}</h3>
-                        <p className="text-muted-foreground truncate">{results.songs[0].artist}</p>
-                        <div className="mt-2 inline-flex items-center gap-2 text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
-                          <Music className="w-3 h-3" />
-                          Song
+          {/* Autocomplete Suggestions */}
+          <AnimatePresence>
+            {showSuggestions && suggestions && query && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden z-50"
+              >
+                {suggestions.songs?.length > 0 && (
+                  <div className="p-2">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
+                      Songs
+                    </p>
+                    {suggestions.songs.slice(0, 3).map((song) => (
+                      <button
+                        key={song._id}
+                        onClick={() => {
+                          playWithId(song._id);
+                          setShowSuggestions(false);
+                        }}
+                        className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors"
+                      >
+                        <img
+                          src={song.image}
+                          alt={song.name}
+                          className="w-10 h-10 rounded-lg object-cover"
+                        />
+                        <div className="flex-1 text-left min-w-0">
+                          <p className="font-medium text-gray-900 truncate">{song.name}</p>
+                          <p className="text-sm text-gray-500 truncate">{song.artist}</p>
                         </div>
-                      </div>
-                    </div>
-                    <button className="w-12 h-12 bg-primary rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-xl hover:scale-105">
-                      <Play className="w-5 h-5 text-primary-foreground fill-current ml-0.5" />
-                    </button>
+                      </button>
+                    ))}
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* Songs */}
-            {results.songs?.length > 0 && (
-              <div>
-                <h2 className="text-xl font-bold mb-4">Songs</h2>
-                <div className="space-y-2">
-                  {results.songs.slice(0, 5).map((song) => (
-                    <div
-                      key={song.id}
-                      onClick={() => playSong(song)}
-                      className="flex items-center gap-4 p-3 rounded-xl hover:bg-card/40 transition-colors cursor-pointer group"
-                    >
-                      <div className="relative">
-                        <img src={song.image} alt={song.name} className="w-12 h-12 rounded-md object-cover" />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md">
-                          <Play className="w-5 h-5 fill-white text-white" />
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-foreground truncate">{song.name}</h3>
-                        <p className="text-sm text-muted-foreground truncate">{song.desc || song.artist}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Albums */}
-            {results.albums?.length > 0 && (
-              <div>
-                <h2 className="text-xl font-bold mb-4">Albums</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {results.albums.slice(0, 4).map((album) => (
-                    <div
-                      key={album.id}
-                      className="bg-card/30 p-4 rounded-xl hover:bg-card/50 transition-all cursor-pointer group"
-                    >
-                      <div className="relative mb-3">
+                {suggestions.albums?.length > 0 && (
+                  <div className="p-2 border-t border-gray-100">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
+                      Albums
+                    </p>
+                    {suggestions.albums.slice(0, 3).map((album) => (
+                      <button
+                        key={album._id}
+                        onClick={() => {
+                          setQuery(album.name);
+                          handleSearch(album.name);
+                        }}
+                        className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors"
+                      >
                         <img
                           src={album.image}
                           alt={album.name}
-                          className="w-full aspect-square rounded-lg object-cover shadow-md"
+                          className="w-10 h-10 rounded-lg object-cover"
                         />
-                        <div className="absolute bottom-2 right-2 w-10 h-10 bg-primary rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-xl">
-                          <Play className="w-4 h-4 text-primary-foreground fill-current ml-0.5" />
+                        <div className="flex-1 text-left min-w-0">
+                          <p className="font-medium text-gray-900 truncate">{album.name}</p>
+                          <p className="text-sm text-gray-500 truncate">Album</p>
                         </div>
-                      </div>
-                      <h3 className="font-semibold truncate">{album.name}</h3>
-                      <p className="text-sm text-muted-foreground truncate">{album.desc}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="songs">
-            {results.songs?.length > 0 ? (
-              <div className="space-y-2">
-                {results.songs.map((song) => (
-                  <div
-                    key={song.id}
-                    onClick={() => playSong(song)}
-                    className="flex items-center gap-4 p-3 rounded-xl hover:bg-card/40 transition-colors cursor-pointer group"
-                  >
-                    <div className="relative">
-                      <img src={song.image} alt={song.name} className="w-14 h-14 rounded-md object-cover" />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md">
-                        <Play className="w-5 h-5 fill-white text-white" />
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-foreground truncate">{song.name}</h3>
-                      <p className="text-sm text-muted-foreground truncate">{song.desc || song.artist}</p>
-                    </div>
+                      </button>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-12">No songs found</p>
+                )}
+              </motion.div>
             )}
-          </TabsContent>
+          </AnimatePresence>
+        </form>
+      </div>
 
-          <TabsContent value="albums">
-            {results.albums?.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {results.albums.map((album) => (
-                  <div
-                    key={album.id}
-                    className="bg-card/30 p-4 rounded-xl hover:bg-card/50 transition-all cursor-pointer group"
-                  >
-                    <div className="relative mb-3">
-                      <img
-                        src={album.image}
-                        alt={album.name}
-                        className="w-full aspect-square rounded-lg object-cover shadow-md"
-                      />
-                      <div className="absolute bottom-2 right-2 w-10 h-10 bg-primary rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-xl">
-                        <Play className="w-4 h-4 text-primary-foreground fill-current ml-0.5" />
-                      </div>
-                    </div>
-                    <h3 className="font-semibold truncate">{album.name}</h3>
-                    <p className="text-sm text-muted-foreground truncate">{album.desc}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-12">No albums found</p>
-            )}
-          </TabsContent>
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-20">
+          <div className="w-12 h-12 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
 
-          <TabsContent value="users">
-            {results.users?.length > 0 ? (
-              <div className="space-y-2">
-                {results.users.map((user) => (
-                  <div
-                    key={user.id}
-                    className="flex items-center gap-4 p-3 rounded-xl hover:bg-card/40 transition-colors cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center">
-                      <User className="w-6 h-6 text-primary-foreground" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium">{user.email}</h3>
-                      <p className="text-sm text-muted-foreground">User</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-12">No users found</p>
-            )}
-          </TabsContent>
-        </Tabs>
-      ) : (
-        <div>
-          <h2 className="text-2xl font-bold mb-6">Browse All</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {categories.map((genre, i) => (
-              <div
-                key={i}
-                className={`aspect-video bg-gradient-to-br ${genre.color} rounded-2xl p-6 flex items-end justify-between font-bold text-xl hover:scale-[1.02] transition-transform cursor-pointer shadow-lg text-white relative overflow-hidden`}
+      {/* Results */}
+      {!loading && results && (
+        <div className="max-w-7xl mx-auto">
+          {/* Tabs */}
+          <div className="flex gap-2 mb-8 border-b border-gray-200">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-6 py-3 font-semibold transition-colors relative ${
+                  activeTab === tab.id
+                    ? 'text-gray-900'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
               >
-                <span className="relative z-10">{genre.name}</span>
-                <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-              </div>
+                {tab.label}
+                {activeTab === tab.id && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500"
+                  />
+                )}
+              </button>
             ))}
           </div>
+
+          {/* Top Result */}
+          {activeTab === 'all' && filteredResults.songs?.length > 0 && (
+            <div className="mb-12">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Top Result</h2>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-gray-50 rounded-2xl p-6 hover:bg-gray-100 transition-colors cursor-pointer max-w-md"
+                onClick={() => playWithId(filteredResults.songs[0]._id)}
+              >
+                <img
+                  src={filteredResults.songs[0].image}
+                  alt={filteredResults.songs[0].name}
+                  className="w-24 h-24 rounded-xl object-cover mb-4 shadow-lg"
+                />
+                <h3 className="text-3xl font-bold text-gray-900 mb-2">
+                  {filteredResults.songs[0].name}
+                </h3>
+                <p className="text-gray-600 mb-4">{filteredResults.songs[0].desc}</p>
+                <div className="flex items-center gap-2">
+                  <Music className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700">Song</span>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {/* Songs */}
+          {filteredResults.songs?.length > 0 && (
+            <div className="mb-12">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Songs</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                {filteredResults.songs.slice(activeTab === 'all' ? 1 : 0).map((song, index) => (
+                  <motion.div
+                    key={song._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <SongItem
+                      name={song.name}
+                      desc={song.desc}
+                      id={song._id}
+                      image={song.image}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Albums */}
+          {filteredResults.albums?.length > 0 && (
+            <div className="mb-12">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Albums</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+                {filteredResults.albums.map((album, index) => (
+                  <motion.div
+                    key={album._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <AlbumItem
+                      name={album.name}
+                      desc={album.desc}
+                      id={album._id}
+                      image={album.image}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* No Results */}
+          {!filteredResults.songs?.length && !filteredResults.albums?.length && (
+            <div className="text-center py-20">
+              <Search className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <h3 className="text-xl font-bold text-gray-900 mb-2">No results found</h3>
+              <p className="text-gray-500">Try searching for something else</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && !results && !query && (
+        <div className="text-center py-20">
+          <Search className="w-20 h-20 mx-auto mb-6 text-gray-300" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Search for music</h2>
+          <p className="text-gray-500">Find your favorite songs, albums, and artists</p>
         </div>
       )}
     </div>

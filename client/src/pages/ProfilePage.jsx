@@ -1,22 +1,30 @@
 import { useEffect, useState } from "react";
 import { userService } from "../services/music";
-import { User, Mail, Calendar, Music, Heart, Clock, Edit2, Camera } from "lucide-react";
+import { User, Mail, Calendar, Music, Heart, Clock, Edit2, Camera, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import toast from "react-hot-toast";
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editData, setEditData] = useState({ email: "" });
-  const [avatarFile, setAvatarFile] = useState(null);
+  const [editData, setEditData] = useState({ name: "", bio: "" });
   const [uploading, setUploading] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [stats, setStats] = useState({
+    playlists: 0,
+    likedSongs: 0,
+    likedAlbums: 0,
+    recentlyPlayed: 0,
+  });
 
   useEffect(() => {
     fetchProfile();
+    fetchStats();
   }, []);
 
   const fetchProfile = async () => {
@@ -24,18 +32,39 @@ export default function ProfilePage() {
       const data = await userService.getProfile();
       if (data.success) {
         setUser(data.user);
-        setEditData({ email: data.user.email });
+        setEditData({
+          name: data.user.name || "",
+          bio: data.user.bio || ""
+        });
       }
     } catch (error) {
-      console.error("Failed to fetch profile:", error);
-      toast.error("Failed to load profile");
+      if (error.response?.status !== 401) {
+        console.error("Failed to fetch profile:", error);
+        toast.error("Failed to load profile");
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchStats = async () => {
+    try {
+      const data = await userService.getAccountStats();
+      if (data.success) {
+        setStats(data.stats);
+      }
+    } catch (error) {
+      // Silently handle 401 errors (not logged in)
+      if (error.response?.status !== 401) {
+        console.error("Failed to fetch stats:", error);
+      }
+    }
+  };
+
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
+
+    setUpdating(true);
     try {
       const data = await userService.updateProfile(editData);
       if (data.success) {
@@ -44,7 +73,10 @@ export default function ProfilePage() {
         toast.success("Profile updated successfully");
       }
     } catch (error) {
-      toast.error("Failed to update profile");
+      console.error("Failed to update profile:", error);
+      toast.error(error.response?.data?.message || "Failed to update profile");
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -52,6 +84,14 @@ export default function ProfilePage() {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast.error("Please upload a JPEG, PNG, or WebP image");
+      return;
+    }
+
+    // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Image size should be less than 5MB");
       return;
@@ -65,152 +105,211 @@ export default function ProfilePage() {
         toast.success("Avatar updated successfully");
       }
     } catch (error) {
-      toast.error("Failed to upload avatar");
+      console.error("Avatar upload error:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Failed to upload avatar";
+      toast.error(errorMessage);
     } finally {
       setUploading(false);
     }
   };
 
+  const handleDeleteAvatar = async () => {
+    if (!confirm("Are you sure you want to delete your avatar?")) return;
+
+    try {
+      const data = await userService.deleteAvatar();
+      if (data.success) {
+        setUser({ ...user, avatar: null });
+        toast.success("Avatar deleted successfully");
+      }
+    } catch (error) {
+      console.error("Failed to delete avatar:", error);
+      toast.error("Failed to delete avatar");
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+      <div className="flex items-center justify-center h-full bg-white">
+        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full bg-white">
         <div className="text-center">
-          <User className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground">Failed to load profile</p>
+          <User className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+          <p className="text-gray-500">Failed to load profile</p>
         </div>
       </div>
     );
   }
 
+  const displayName = user.name || user.email.split('@')[0];
+
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      {/* Profile Header */}
-      <div className="bg-card/40 backdrop-blur-md border border-border/50 rounded-3xl p-8 mb-6">
-        <div className="flex flex-col md:flex-row items-center gap-6">
-          {/* Avatar */}
-          <div className="relative group">
-            <div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center">
-              {user.avatar ? (
-                <img src={user.avatar} alt={user.email} className="w-full h-full object-cover" />
-              ) : (
-                <User className="w-16 h-16 text-primary-foreground" />
+    <div className="min-h-full bg-white p-6">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="bg-emerald-500 rounded-2xl p-8 mb-6 text-white">
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            {/* Avatar */}
+            <div className="relative group">
+              <div className="w-32 h-32 rounded-full overflow-hidden bg-white flex items-center justify-center shadow-lg">
+                {user.avatar ? (
+                  <img src={user.avatar} alt={displayName} className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-16 h-16 text-emerald-500" />
+                )}
+              </div>
+              <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                {uploading ? (
+                  <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Camera className="w-8 h-8 text-white" />
+                )}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                  disabled={uploading}
+                />
+              </label>
+              {user.avatar && (
+                <button
+                  onClick={handleDeleteAvatar}
+                  className="absolute -bottom-2 -right-2 p-2 bg-red-500 hover:bg-red-600 rounded-full text-white shadow-lg transition-colors"
+                  title="Delete avatar"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               )}
             </div>
-            <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-              <Camera className="w-8 h-8 text-white" />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                className="hidden"
-                disabled={uploading}
-              />
-            </label>
-            {uploading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-full">
-                <div className="animate-spin w-8 h-8 border-2 border-white border-t-transparent rounded-full" />
-              </div>
-            )}
-          </div>
 
-          {/* User Info */}
-          <div className="flex-1 text-center md:text-left">
-            <h1 className="text-3xl font-bold mb-2">{user.email.split('@')[0]}</h1>
-            <div className="flex flex-wrap gap-4 justify-center md:justify-start text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                {user.email}
-              </div>
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                Joined {new Date(user.createdAt).toLocaleDateString()}
-              </div>
-            </div>
-          </div>
-
-          {/* Edit Button */}
-          <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Edit2 className="w-4 h-4" />
-                Edit Profile
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Edit Profile</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleUpdateProfile} className="space-y-4">
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={editData.email}
-                    onChange={(e) => setEditData({ ...editData, email: e.target.value })}
-                  />
+            {/* User Info */}
+            <div className="flex-1 text-center md:text-left">
+              <h1 className="text-3xl font-bold mb-2">{displayName}</h1>
+              {user.bio && (
+                <p className="text-white/90 mb-3">{user.bio}</p>
+              )}
+              <div className="flex flex-wrap gap-3 justify-center md:justify-start text-sm">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  {user.email}
                 </div>
-                <Button type="submit" className="w-full">Save Changes</Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Joined {new Date(user.createdAt).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-card/40 backdrop-blur-md border border-border/50 rounded-2xl p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary/10 rounded-xl">
-              <Music className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">0</p>
-              <p className="text-sm text-muted-foreground">Playlists</p>
-            </div>
+            {/* Edit Button */}
+            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-white text-emerald-600 hover:bg-gray-100 gap-2">
+                  <Edit2 className="w-4 h-4" />
+                  Edit Profile
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-white">
+                <DialogHeader>
+                  <DialogTitle>Edit Profile</DialogTitle>
+                  <DialogDescription>
+                    Update your profile information
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">Name</Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="Enter your name"
+                      value={editData.name}
+                      onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                      className="bg-white border-gray-300"
+                      disabled={updating}
+                      maxLength={100}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="bio">Bio</Label>
+                    <Textarea
+                      id="bio"
+                      placeholder="Tell us about yourself"
+                      value={editData.bio}
+                      onChange={(e) => setEditData({ ...editData, bio: e.target.value })}
+                      className="bg-white border-gray-300 resize-none"
+                      disabled={updating}
+                      maxLength={500}
+                      rows={4}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {editData.bio.length}/500 characters
+                    </p>
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 gap-2"
+                    disabled={updating}
+                  >
+                    {updating ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Save Changes
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
-        <div className="bg-card/40 backdrop-blur-md border border-border/50 rounded-2xl p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-pink-500/10 rounded-xl">
-              <Heart className="w-6 h-6 text-pink-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">0</p>
-              <p className="text-sm text-muted-foreground">Liked Songs</p>
-            </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-gray-50 rounded-xl p-6 text-center">
+            <Music className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
+            <p className="text-2xl font-bold text-gray-900">{stats.playlists}</p>
+            <p className="text-sm text-gray-500">Playlists</p>
+          </div>
+
+          <div className="bg-gray-50 rounded-xl p-6 text-center">
+            <Heart className="w-8 h-8 mx-auto mb-2 text-pink-500" />
+            <p className="text-2xl font-bold text-gray-900">{stats.likedSongs}</p>
+            <p className="text-sm text-gray-500">Liked Songs</p>
+          </div>
+
+          <div className="bg-gray-50 rounded-xl p-6 text-center">
+            <Music className="w-8 h-8 mx-auto mb-2 text-purple-500" />
+            <p className="text-2xl font-bold text-gray-900">{stats.likedAlbums}</p>
+            <p className="text-sm text-gray-500">Liked Albums</p>
+          </div>
+
+          <div className="bg-gray-50 rounded-xl p-6 text-center">
+            <Clock className="w-8 h-8 mx-auto mb-2 text-blue-500" />
+            <p className="text-2xl font-bold text-gray-900">{stats.recentlyPlayed}</p>
+            <p className="text-sm text-gray-500">Recently Played</p>
           </div>
         </div>
 
-        <div className="bg-card/40 backdrop-blur-md border border-border/50 rounded-2xl p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-500/10 rounded-xl">
-              <Clock className="w-6 h-6 text-blue-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">0h</p>
-              <p className="text-sm text-muted-foreground">Listening Time</p>
-            </div>
+        {/* Recent Activity */}
+        <div className="bg-gray-50 rounded-xl p-8">
+          <h2 className="text-xl font-bold mb-4 text-gray-900">Recent Activity</h2>
+          <div className="text-center py-12 text-gray-500">
+            <Music className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <p>No recent activity</p>
+            <p className="text-sm mt-2">Start listening to see your activity here</p>
           </div>
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="bg-card/40 backdrop-blur-md border border-border/50 rounded-2xl p-6">
-        <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
-        <div className="text-center py-12 text-muted-foreground">
-          <Music className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>No recent activity</p>
-          <p className="text-sm mt-2">Start listening to see your activity here</p>
         </div>
       </div>
     </div>
