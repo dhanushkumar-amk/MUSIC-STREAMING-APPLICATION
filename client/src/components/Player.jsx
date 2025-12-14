@@ -1,73 +1,219 @@
-import React, { useContext } from 'react'
-import { PlayerContext } from '../context/PlayerContext'
-import { Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, Mic2, LayoutList, Volume2, MonitorSpeaker, Maximize2 } from 'lucide-react'
-import { Slider } from "@/components/ui/slider"
+import { usePlayer } from '../context/PlayerContext';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Repeat, Repeat1, Shuffle, Heart } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { libraryService } from '../services/music';
+import toast from 'react-hot-toast';
 
-const Player = () => {
+export default function Player() {
+  const {
+    track,
+    isPlaying,
+    currentTime,
+    duration,
+    volume,
+    shuffle,
+    loopMode,
+    togglePlayPause,
+    next,
+    previous,
+    seekTo,
+    changeVolume,
+    toggleShuffle,
+    toggleLoop,
+  } = usePlayer();
 
-  const { track, seekBar, seekBg, playStatus, play, pause, time, previous, next, seekSong } = useContext(PlayerContext);
+  const [isLiked, setIsLiked] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [previousVolume, setPreviousVolume] = useState(1);
 
-  // Fallback if no track is loaded
+  // Check if song is liked
+  useEffect(() => {
+    if (track) {
+      checkIfLiked();
+    }
+  }, [track]);
+
+  const checkIfLiked = async () => {
+    try {
+      const response = await libraryService.getLikedSongs();
+      if (response.success) {
+        const liked = response.songs.some(song => song._id === track._id);
+        setIsLiked(liked);
+      }
+    } catch (error) {
+      console.error('Failed to check if liked:', error);
+    }
+  };
+
+  const handleLike = async () => {
+    if (!track) return;
+
+    try {
+      if (isLiked) {
+        await libraryService.unlikeSong(track._id);
+        setIsLiked(false);
+        toast.success('Removed from Liked Songs');
+      } else {
+        await libraryService.likeSong(track._id);
+        setIsLiked(true);
+        toast.success('Added to Liked Songs');
+      }
+    } catch (error) {
+      console.error('Failed to like/unlike song:', error);
+      toast.error('Failed to update');
+    }
+  };
+
+  const formatTime = (time) => {
+    if (isNaN(time)) return '0:00';
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const handleVolumeToggle = () => {
+    if (isMuted) {
+      changeVolume(previousVolume);
+      setIsMuted(false);
+    } else {
+      setPreviousVolume(volume);
+      changeVolume(0);
+      setIsMuted(true);
+    }
+  };
+
+  const getLoopIcon = () => {
+    if (loopMode === 'one') return <Repeat1 className="w-5 h-5" />;
+    return <Repeat className="w-5 h-5" />;
+  };
+
   if (!track) return null;
 
   return (
-    <div className='fixed bottom-0 w-full h-[90px] bg-black/90 backdrop-blur-lg border-t border-white/10 px-4 text-white flex justify-between items-center z-50'>
+    <div className="h-[90px] bg-white border-t border-gray-200 px-4 flex items-center justify-between">
+      {/* Left: Track Info */}
+      <div className="flex items-center gap-4 w-[30%] min-w-[180px]">
+        <img
+          src={track.image}
+          alt={track.name}
+          className="w-14 h-14 rounded-lg object-cover shadow-md"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-gray-900 truncate">{track.name}</p>
+          <p className="text-sm text-gray-500 truncate">{track.desc || track.artist}</p>
+        </div>
+        <button
+          onClick={handleLike}
+          className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${
+            isLiked ? 'text-emerald-500' : 'text-gray-400'
+          }`}
+        >
+          <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+        </button>
+      </div>
 
-      {/* LEFT: Song Info */}
-      <div className='hidden lg:flex items-center gap-4 w-[30%]'>
-        <img className='w-12 h-12 rounded object-cover' src={track.image} alt="" />
-        <div>
-          <p className='font-medium hover:underline cursor-pointer'>{track.name}</p>
-          <p className='text-xs text-gray-400 hover:underline cursor-pointer'>{track.desc.slice(0, 30)}</p>
+      {/* Center: Player Controls */}
+      <div className="flex flex-col items-center gap-2 w-[40%] max-w-[722px]">
+        {/* Control Buttons */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={toggleShuffle}
+            className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${
+              shuffle ? 'text-emerald-500' : 'text-gray-600'
+            }`}
+          >
+            <Shuffle className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={previous}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-700"
+          >
+            <SkipBack className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={togglePlayPause}
+            className="w-10 h-10 bg-emerald-500 hover:bg-emerald-600 rounded-full flex items-center justify-center text-white transition-colors shadow-md"
+          >
+            {isPlaying ? (
+              <Pause className="w-5 h-5 fill-current" />
+            ) : (
+              <Play className="w-5 h-5 fill-current ml-0.5" />
+            )}
+          </button>
+
+          <button
+            onClick={next}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-700"
+          >
+            <SkipForward className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={toggleLoop}
+            className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${
+              loopMode !== 'off' ? 'text-emerald-500' : 'text-gray-600'
+            }`}
+          >
+            {getLoopIcon()}
+          </button>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="flex items-center gap-2 w-full">
+          <span className="text-xs text-gray-500 w-10 text-right">
+            {formatTime(currentTime)}
+          </span>
+          <input
+            type="range"
+            min="0"
+            max={duration || 0}
+            value={currentTime}
+            onChange={(e) => seekTo(Number(e.target.value))}
+            className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+            style={{
+              background: `linear-gradient(to right, #10b981 0%, #10b981 ${
+                (currentTime / duration) * 100
+              }%, #e5e7eb ${(currentTime / duration) * 100}%, #e5e7eb 100%)`,
+            }}
+          />
+          <span className="text-xs text-gray-500 w-10">
+            {formatTime(duration)}
+          </span>
         </div>
       </div>
 
-      {/* CENTER: Controls & Progress */}
-      <div className='flex flex-col items-center gap-1 m-auto w-[40%]'>
-        <div className='flex gap-4'>
-          <Shuffle className='w-4 cursor-pointer hover:text-green-500 transition-colors text-gray-400' />
-          <SkipBack onClick={previous} className='w-5 cursor-pointer hover:text-white transition-colors fill-current' />
-
-          {playStatus
-            ? <Pause onClick={pause} className='w-8 h-8 cursor-pointer hover:scale-105 transition-transform fill-white' />
-            : <Play onClick={play} className='w-8 h-8 cursor-pointer hover:scale-105 transition-transform fill-white' />
-          }
-
-          <SkipForward onClick={next} className='w-5 cursor-pointer hover:text-white transition-colors fill-current' />
-          <Repeat className='w-4 cursor-pointer hover:text-green-500 transition-colors text-gray-400' />
-        </div>
-
-        <div className='flex items-center gap-3 w-full'>
-          <p className='text-xs text-gray-400 min-w-[35px] text-right'>
-            {time.currentTime.minute}:{time.currentTime.second.toString().padStart(2, '0')}
-          </p>
-
-          <div ref={seekBg} onClick={seekSong} className='w-full bg-gray-600 rounded-full cursor-pointer h-1 hover:h-1.5 transition-all group'>
-            <div ref={seekBar} className='h-full bg-white rounded-full group-hover:bg-green-500 relative'>
-                <div className='absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 shadow-md'></div>
-            </div>
-          </div>
-
-          <p className='text-xs text-gray-400 min-w-[35px]'>
-            {time.totalTime.minute}:{time.totalTime.second.toString().padStart(2, '0')}
-          </p>
-        </div>
+      {/* Right: Volume Control */}
+      <div className="flex items-center gap-2 w-[30%] justify-end">
+        <button
+          onClick={handleVolumeToggle}
+          className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-700"
+        >
+          {isMuted || volume === 0 ? (
+            <VolumeX className="w-5 h-5" />
+          ) : (
+            <Volume2 className="w-5 h-5" />
+          )}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={volume}
+          onChange={(e) => {
+            changeVolume(Number(e.target.value));
+            setIsMuted(false);
+          }}
+          className="w-24 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+          style={{
+            background: `linear-gradient(to right, #10b981 0%, #10b981 ${
+              volume * 100
+            }%, #e5e7eb ${volume * 100}%, #e5e7eb 100%)`,
+          }}
+        />
       </div>
-
-      {/* RIGHT: Volume & Extras */}
-      <div className='hidden lg:flex items-center gap-2 opacity-75 w-[30%] justify-end'>
-        <Mic2 className='w-4 cursor-pointer hover:text-white' />
-        <LayoutList className='w-4 cursor-pointer hover:text-white' />
-        <MonitorSpeaker className='w-4 cursor-pointer hover:text-white' />
-        <div className='flex items-center gap-2 w-24 group'>
-            <Volume2 className='w-4' />
-            <Slider defaultValue={[100]} max={100} step={1} className="w-full cursor-pointer" />
-        </div>
-        <Maximize2 className='w-4 cursor-pointer hover:text-white ml-2' />
-      </div>
-
     </div>
-  )
+  );
 }
-
-export default Player

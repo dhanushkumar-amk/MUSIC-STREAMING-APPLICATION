@@ -13,6 +13,7 @@ import HomePage from "./pages/HomePage"
 import AlbumsPage from "./pages/AlbumsPage"
 import PlaylistsPage from "./pages/PlaylistsPage"
 import ProfilePage from "./pages/ProfilePage"
+import SettingsPage from "./pages/SettingsPage"
 import RequireAuth from "./components/auth/RequireAuth"
 import MainLayout from "./components/layout/MainLayout"
 import { PlayerProvider } from "./context/PlayerContext"
@@ -36,6 +37,7 @@ const App = () => {
                 <Route path="/albums" element={<AlbumsPage />} />
                 <Route path="/playlists" element={<PlaylistsPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/collection" element={<LibraryPage />} />
                 <Route path="/collection/tracks" element={<LibraryPage />} />
                 <Route path="/collection/active" element={<LibraryPage />} />
