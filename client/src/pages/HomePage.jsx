@@ -133,6 +133,7 @@ const HomePage = () => {
                   desc={item.song.desc}
                   id={item.song._id}
                   image={item.song.image}
+                  song={item.song}
                 />
               </motion.div>
             ))}
@@ -166,6 +167,7 @@ const HomePage = () => {
                   desc={item.desc}
                   id={item._id}
                   image={item.image}
+                  song={item}
                 />
               </motion.div>
             ))}
@@ -236,6 +238,7 @@ const HomePage = () => {
                   desc={item.desc}
                   id={item._id}
                   image={item.image}
+                  song={item}
                 />
               </motion.div>
             ))

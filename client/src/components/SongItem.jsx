@@ -2,8 +2,9 @@ import React from 'react';
 import { usePlayer } from '../context/PlayerContext';
 import { Play } from 'lucide-react';
 import { motion } from 'framer-motion';
+import SimpleDownloadButton from './SimpleDownloadButton';
 
-const SongItem = ({ image, name, desc, id }) => {
+const SongItem = ({ image, name, desc, id, song }) => {
   const { playWithId } = usePlayer();
 
   return (
@@ -20,6 +21,13 @@ const SongItem = ({ image, name, desc, id }) => {
             src={image}
             alt={name}
           />
+
+          {/* Download Button - Top Right */}
+          {song && (
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+              <SimpleDownloadButton song={song} size="sm" />
+            </div>
+          )}
 
           {/* Play Button Overlay */}
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">

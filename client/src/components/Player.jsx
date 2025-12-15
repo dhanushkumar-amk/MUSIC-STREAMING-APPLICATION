@@ -1,8 +1,11 @@
 import { usePlayer } from '../context/PlayerContext';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Repeat, Repeat1, Shuffle, Heart, ChevronDown, List, X, GripVertical } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Repeat, Repeat1, Shuffle, Heart, ChevronDown, List, X, GripVertical, Sliders, Settings as SettingsIcon, Music2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { libraryService } from '../services/music';
 import toast from 'react-hot-toast';
+import Equalizer from './player/Equalizer';
+import LyricsPanel from './player/LyricsPanel';
+import AdvancedPlaybackSettings from './player/AdvancedPlaybackSettings';
 
 export default function Player() {
   const {
@@ -15,6 +18,8 @@ export default function Player() {
     loopMode,
     queue,
     currentIndex,
+    settings,
+    updateSettings,
     togglePlayPause,
     next,
     previous,
@@ -32,6 +37,11 @@ export default function Player() {
   const [isMiniPlayer, setIsMiniPlayer] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState(null);
+
+  // Advanced features
+  const [showEqualizer, setShowEqualizer] = useState(false);
+  const [showLyrics, setShowLyrics] = useState(false);
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
   // Check if song is liked
   useEffect(() => {
@@ -612,6 +622,36 @@ export default function Player() {
                 </div>
 
                 <button
+                  onClick={() => setShowLyrics(!showLyrics)}
+                  className={`p-2.5 rounded-full transition-all duration-300 transform hover:scale-110 ${
+                    showLyrics ? 'bg-purple-50 text-purple-600' : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                  title="Lyrics"
+                >
+                  <Music2 className="w-5 h-5" />
+                </button>
+
+                <button
+                  onClick={() => setShowEqualizer(!showEqualizer)}
+                  className={`p-2.5 rounded-full transition-all duration-300 transform hover:scale-110 ${
+                    showEqualizer ? 'bg-emerald-50 text-emerald-600' : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                  title="Equalizer"
+                >
+                  <Sliders className="w-5 h-5" />
+                </button>
+
+                <button
+                  onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                  className={`p-2.5 rounded-full transition-all duration-300 transform hover:scale-110 ${
+                    showAdvancedSettings ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                  title="Advanced Settings"
+                >
+                  <SettingsIcon className="w-5 h-5" />
+                </button>
+
+                <button
                   onClick={() => setIsMiniPlayer(true)}
                   className="p-2.5 rounded-full text-gray-700 hover:bg-gray-100 transition-all duration-300 transform hover:scale-110"
                   title="Mini Player"
@@ -623,6 +663,33 @@ export default function Player() {
           </div>
         </div>
       </div>
+
+      {/* Advanced Feature Modals */}
+      <Equalizer
+        isOpen={showEqualizer}
+        onClose={() => setShowEqualizer(false)}
+        onSettingsChange={(newSettings) => {
+          updateSettings(newSettings);
+        }}
+      />
+
+      <LyricsPanel
+        songId={track?._id}
+        songName={track?.name}
+        artistName={track?.artist}
+        duration={duration}
+        currentTime={currentTime}
+        isOpen={showLyrics}
+        onClose={() => setShowLyrics(false)}
+      />
+
+      <AdvancedPlaybackSettings
+        isOpen={showAdvancedSettings}
+        onClose={() => setShowAdvancedSettings(false)}
+        onSettingsChange={(newSettings) => {
+          updateSettings(newSettings);
+        }}
+      />
     </>
   );
 }

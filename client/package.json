@@ -26,6 +26,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.26",
+    "howler": "^2.2.4",
     "input-otp": "^1.4.2",
     "lodash": "^4.17.21",
     "lucide-react": "^0.561.0",
@@ -36,8 +37,11 @@
     "react-hot-toast": "^2.6.0",
     "react-intersection-observer": "^10.0.0",
     "react-router-dom": "^7.10.1",
+    "standardized-audio-context": "^25.3.77",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.18",
+    "tone": "^15.1.22",
+    "web-audio-beat-detector": "^8.2.31",
     "zod": "^4.1.13"
   },
   "devDependencies": {

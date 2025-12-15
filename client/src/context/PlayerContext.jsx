@@ -1,11 +1,18 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { queueService, recentlyPlayedService, playStatsService } from '../services/music';
+import { settingsService } from '../services/settings';
 import toast from 'react-hot-toast';
 
 const PlayerContext = createContext();
 
 export const PlayerProvider = ({ children }) => {
   const audioRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const sourceNodeRef = useRef(null);
+  const gainNodeRef = useRef(null);
+  const eqNodesRef = useRef([]);
+  const analyserRef = useRef(null);
+  const compressorRef = useRef(null);
 
   // Player State
   const [track, setTrack] = useState(null);
@@ -20,18 +27,222 @@ export const PlayerProvider = ({ children }) => {
   const [queue, setQueue] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [shuffle, setShuffle] = useState(false);
-  const [loopMode, setLoopMode] = useState('off'); // 'off', 'one', 'all'
+  const [loopMode, setLoopMode] = useState('off');
+
+  // Advanced Settings State
+  const [settings, setSettings] = useState({
+    audioQuality: 'high',
+    crossfadeDuration: 0,
+    gaplessPlayback: true,
+    normalizeVolume: false,
+    playbackSpeed: 1.0,
+    equalizerEnabled: false,
+    equalizerBands: {
+      band32: 0, band64: 0, band125: 0, band250: 0, band500: 0,
+      band1k: 0, band2k: 0, band4k: 0, band8k: 0, band16k: 0
+    }
+  });
 
   // Recently Played Tracking
   const [playStartTime, setPlayStartTime] = useState(null);
   const [currentEntryId, setCurrentEntryId] = useState(null);
 
+  // EQ Frequencies (10-band)
+  const EQ_FREQUENCIES = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+
+  // Initialize Web Audio API
+  const initAudioContext = () => {
+    // DISABLED: Using native HTML5 audio for better quality
+    return;
+
+    /* COMMENTED OUT - Web Audio API disabled
+    if (audioContextRef.current) return;
+
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioContextRef.current = new AudioContext();
+
+      // Create analyser
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      analyserRef.current.fftSize = 2048;
+
+      // Create compressor for volume normalization
+      compressorRef.current = audioContextRef.current.createDynamicsCompressor();
+      compressorRef.current.threshold.value = -24;
+      compressorRef.current.knee.value = 30;
+      compressorRef.current.ratio.value = 12;
+      compressorRef.current.attack.value = 0.003;
+      compressorRef.current.release.value = 0.25;
+
+      // Create 10-band equalizer
+      eqNodesRef.current = EQ_FREQUENCIES.map((freq, index) => {
+        const filter = audioContextRef.current.createBiquadFilter();
+
+        if (index === 0) {
+          filter.type = 'lowshelf';
+        } else if (index === EQ_FREQUENCIES.length - 1) {
+          filter.type = 'highshelf';
+        } else {
+          filter.type = 'peaking';
+          filter.Q.value = 1.0;
+        }
+
+        filter.frequency.value = freq;
+        filter.gain.value = 0;
+
+        return filter;
+      });
+
+      // Create gain node
+      gainNodeRef.current = audioContextRef.current.createGain();
+      gainNodeRef.current.gain.value = volume;
+
+      console.log('✅ Web Audio Context initialized');
+    } catch (error) {
+      console.error('Failed to initialize Audio Context:', error);
+    }
+    */
+  };
+
+  // Connect audio nodes
+  const connectAudioNodes = () => {
+    // DISABLED: Web Audio API processing for better audio quality
+    // Using native HTML5 audio element instead
+    return;
+
+    /* COMMENTED OUT - Web Audio API causes quality issues
+    if (!audioContextRef.current || !audioRef.current) return;
+
+    try {
+      // Create media element source if not exists
+      if (!sourceNodeRef.current) {
+        try {
+          sourceNodeRef.current = audioContextRef.current.createMediaElementSource(audioRef.current);
+          console.log('✅ Media source created');
+        } catch (err) {
+          console.error('Source already exists or error:', err);
+          return;
+        }
+      }
+
+      let currentNode = sourceNodeRef.current;
+
+      // Disconnect all nodes first
+      try {
+        eqNodesRef.current.forEach(node => {
+          try { node.disconnect(); } catch (e) {}
+        });
+        if (compressorRef.current) {
+          try { compressorRef.current.disconnect(); } catch (e) {}
+        }
+        if (analyserRef.current) {
+          try { analyserRef.current.disconnect(); } catch (e) {}
+        }
+        if (gainNodeRef.current) {
+          try { gainNodeRef.current.disconnect(); } catch (e) {}
+        }
+      } catch (e) {
+        // Nodes weren't connected yet
+      }
+
+      // Connect through equalizer if enabled
+      if (settings.equalizerEnabled && eqNodesRef.current.length > 0) {
+        eqNodesRef.current.forEach((filter) => {
+          currentNode.connect(filter);
+          currentNode = filter;
+        });
+      }
+
+      // Connect through compressor if normalize is enabled
+      if (settings.normalizeVolume && compressorRef.current) {
+        currentNode.connect(compressorRef.current);
+        currentNode = compressorRef.current;
+      }
+
+      // Connect to analyser
+      if (analyserRef.current) {
+        currentNode.connect(analyserRef.current);
+      }
+
+      // Connect to gain node and then to destination (SPEAKERS!)
+      if (gainNodeRef.current) {
+        currentNode.connect(gainNodeRef.current);
+        gainNodeRef.current.connect(audioContextRef.current.destination);
+      } else {
+        currentNode.connect(audioContextRef.current.destination);
+      }
+
+      console.log('✅ Audio nodes connected to speakers');
+    } catch (error) {
+      console.error('Failed to connect audio nodes:', error);
+      // Fallback: connect directly to destination
+      try {
+        if (sourceNodeRef.current) {
+          sourceNodeRef.current.connect(audioContextRef.current.destination);
+          console.log('✅ Fallback: Direct connection to speakers');
+        }
+      } catch (e) {
+        console.error('Fallback failed:', e);
+      }
+    }
+    */
+  };
+
+  // Load user settings
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const response = await settingsService.getSettings();
+        if (response.success) {
+          const newSettings = {
+            audioQuality: response.settings.audioQuality,
+            crossfadeDuration: response.settings.crossfadeDuration,
+            gaplessPlayback: response.settings.gaplessPlayback,
+            normalizeVolume: response.settings.normalizeVolume,
+            playbackSpeed: response.settings.playbackSpeed,
+            equalizerEnabled: response.settings.equalizerEnabled,
+            equalizerBands: response.settings.equalizerBands
+          };
+          setSettings(newSettings);
+          console.log('✅ Settings loaded:', newSettings);
+        }
+      } catch (error) {
+        console.log('Using default settings');
+      }
+    };
+    loadSettings();
+  }, []);
+
+  // Apply settings changes
+  useEffect(() => {
+    if (!audioRef.current) return;
+
+    // Apply playback speed
+    audioRef.current.playbackRate = settings.playbackSpeed;
+
+    // Apply EQ settings
+    if (eqNodesRef.current.length > 0) {
+      const bandKeys = ['band32', 'band64', 'band125', 'band250', 'band500', 'band1k', 'band2k', 'band4k', 'band8k', 'band16k'];
+      bandKeys.forEach((key, index) => {
+        if (settings.equalizerBands[key] !== undefined && eqNodesRef.current[index]) {
+          eqNodesRef.current[index].gain.value = settings.equalizerBands[key];
+        }
+      });
+    }
+
+    // Reconnect nodes if EQ or normalize changed
+    if (audioContextRef.current && sourceNodeRef.current) {
+      connectAudioNodes();
+    }
+  }, [settings]);
+
   // Initialize audio element
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = volume;
+      audioRef.current.playbackRate = settings.playbackSpeed;
     }
-  }, [volume]);
+  }, [volume, settings.playbackSpeed]);
 
   // Time update listener
   useEffect(() => {
@@ -62,7 +273,6 @@ export const PlayerProvider = ({ children }) => {
           setLoopMode(response.queue.loopMode || 'off');
         }
       } catch (error) {
-        // Queue doesn't exist yet, that's okay
         console.log('No existing queue state');
       }
     };
@@ -90,7 +300,6 @@ export const PlayerProvider = ({ children }) => {
       const playDuration = Math.floor((Date.now() - playStartTime) / 1000);
       await recentlyPlayedService.trackEnd(currentEntryId, playDuration, skipped);
 
-      // Increment play count if played for more than 30 seconds
       if (playDuration > 30 && track) {
         await playStatsService.incrementPlay(track._id);
       }
@@ -127,9 +336,18 @@ export const PlayerProvider = ({ children }) => {
       await trackPlayStart(song._id);
 
       if (audioRef.current) {
+        // Set the source
         audioRef.current.src = song.file;
-        audioRef.current.play();
-        setIsPlaying(true);
+
+        // Play the audio directly with native HTML5 audio
+        try {
+          await audioRef.current.play();
+          setIsPlaying(true);
+          console.log('✅ Audio playing with native HTML5');
+        } catch (playError) {
+          console.error('Play error:', playError);
+          toast.error('Failed to play audio');
+        }
       }
     } catch (error) {
       console.error('Error playing song:', error);
@@ -146,15 +364,16 @@ export const PlayerProvider = ({ children }) => {
   };
 
   // Toggle play/pause
-  const togglePlayPause = () => {
+  const togglePlayPause = async () => {
     if (!audioRef.current) return;
 
     if (isPlaying) {
       audioRef.current.pause();
+      setIsPlaying(false);
     } else {
-      audioRef.current.play();
+      await audioRef.current.play();
+      setIsPlaying(true);
     }
-    setIsPlaying(!isPlaying);
   };
 
   // Next song
@@ -182,7 +401,6 @@ export const PlayerProvider = ({ children }) => {
 
     let prevIndex;
     if (currentTime > 3) {
-      // Restart current song if played for more than 3 seconds
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play();
@@ -204,17 +422,14 @@ export const PlayerProvider = ({ children }) => {
     await trackPlayEnd(false);
 
     if (loopMode === 'one') {
-      // Repeat current song
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play();
         await trackPlayStart(track._id);
       }
     } else if (loopMode === 'all' || currentIndex < queue.length - 1) {
-      // Play next song
       await next();
     } else {
-      // End of queue
       setIsPlaying(false);
     }
   };
@@ -299,6 +514,15 @@ export const PlayerProvider = ({ children }) => {
     }
   };
 
+  // Update settings
+  const updateSettings = (newSettings) => {
+    setSettings(prev => {
+      const updated = { ...prev, ...newSettings };
+      console.log('Settings updated:', updated);
+      return updated;
+    });
+  };
+
   // Get songs data
   const getSongsData = (data) => {
     setSongsData(data);
@@ -327,6 +551,8 @@ export const PlayerProvider = ({ children }) => {
     currentIndex,
     shuffle,
     loopMode,
+    settings,
+    updateSettings,
     playSong,
     playWithId,
     togglePlayPause,
@@ -345,7 +571,7 @@ export const PlayerProvider = ({ children }) => {
   return (
     <PlayerContext.Provider value={value}>
       {children}
-      <audio ref={audioRef} />
+      <audio ref={audioRef} crossOrigin="anonymous" />
     </PlayerContext.Provider>
   );
 };

@@ -79,6 +79,8 @@ import playStatsRouter from "./src/routes/playStats.route.js";
 import recommendationRoutes from "./src/routes/recommendation.route.js";
 import queueRoutes from "./src/routes/queue.route.js";
 import statsRouter from "./src/routes/stats.route.js";
+import userSettingsRouter from "./src/routes/userSettings.route.js";
+import lyricsRouter from "./src/routes/lyrics.route.js";
 
 
 app.use("/api/auth", authRouter);
@@ -92,6 +94,9 @@ app.use("/api/plays", playStatsRouter);
 app.use("/api/recommendation", recommendationRoutes);
 app.use("/api/queue", queueRoutes);
 app.use("/api/stats", statsRouter);
+app.use("/api/settings", userSettingsRouter);
+app.use("/api/lyrics", lyricsRouter);
+
 
 
 
