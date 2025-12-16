@@ -81,6 +81,7 @@ import queueRoutes from "./src/routes/queue.route.js";
 import statsRouter from "./src/routes/stats.route.js";
 import userSettingsRouter from "./src/routes/userSettings.route.js";
 import lyricsRouter from "./src/routes/lyrics.route.js";
+import sessionRouter from "./src/routes/session.route.js";
 
 
 app.use("/api/auth", authRouter);
@@ -96,6 +97,7 @@ app.use("/api/queue", queueRoutes);
 app.use("/api/stats", statsRouter);
 app.use("/api/settings", userSettingsRouter);
 app.use("/api/lyrics", lyricsRouter);
+app.use("/api/session", sessionRouter);
 
 
 
@@ -112,7 +114,15 @@ app.use((err, req, res, next) => {
   });
 });
 
-/* START SERVER */
-app.listen(port, () =>
+/* START SERVER WITH SOCKET.IO */
+import { createServer } from 'http';
+import { initializeSocket } from './src/socket/sessionSocket.js';
+
+const httpServer = createServer(app);
+
+// Initialize Socket.io
+initializeSocket(httpServer);
+
+httpServer.listen(port, () =>
   console.log(`🚀 Server running on PORT: ${port}`)
 );

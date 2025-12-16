@@ -18,34 +18,38 @@ import SettingsPage from "./pages/SettingsPage"
 import RequireAuth from "./components/auth/RequireAuth"
 import MainLayout from "./components/layout/MainLayout"
 import { PlayerProvider } from "./context/PlayerContext"
+import { SessionProvider } from "./context/SessionContext"
 import CommandPalette from "./components/CommandPalette"
+import SessionPage from "./pages/SessionPage"
 
 const App = () => {
   return (
     <BrowserRouter>
       <PlayerProvider>
-        <Toaster position="top-center" reverseOrder={false} />
-        <CommandPalette />
-        <Routes>
-            <Route path="/" element={<Landing />} />
+        <SessionProvider>
+          <Toaster position="top-center" reverseOrder={false} />
+          <CommandPalette />
+          <Routes>
+              <Route path="/" element={<Landing />} />
 
-            {/* Protected Routes */}
-            <Route element={
-                <RequireAuth>
-                    <MainLayout />
-                </RequireAuth>
-            }>
-                <Route path="/home" element={<HomePage />} />
-                <Route path="/search" element={<SearchPage />} />
-                <Route path="/albums" element={<AlbumsPage />} />
-                <Route path="/playlists" element={<PlaylistsPage />} />
-                <Route path="/playlist/:playlistId" element={<PlaylistDetailPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/collection" element={<LibraryPage />} />
-                <Route path="/collection/tracks" element={<LibraryPage />} />
-                <Route path="/collection/active" element={<LibraryPage />} />
-                <Route path="/library" element={<LibraryPage />} />
+              {/* Protected Routes */}
+              <Route element={
+                  <RequireAuth>
+                      <MainLayout />
+                  </RequireAuth>
+              }>
+                  <Route path="/home" element={<HomePage />} />
+                  <Route path="/search" element={<SearchPage />} />
+                  <Route path="/albums" element={<AlbumsPage />} />
+                  <Route path="/playlists" element={<PlaylistsPage />} />
+                  <Route path="/playlist/:playlistId" element={<PlaylistDetailPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/collection" element={<LibraryPage />} />
+                  <Route path="/collection/tracks" element={<LibraryPage />} />
+                  <Route path="/collection/active" element={<LibraryPage />} />
+                  <Route path="/library" element={<LibraryPage />} />
+                  <Route path="/session/:code" element={<SessionPage />} />
             </Route>
 
             {/* Auth Routes */}
@@ -58,6 +62,7 @@ const App = () => {
                 <Route path="reset-password" element={<ResetPasswordPage />} />
             </Route>
         </Routes>
+        </SessionProvider>
       </PlayerProvider>
     </BrowserRouter>
   )

@@ -1,13 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { userService } from '../services/music';
 import { authService } from '../services/auth';
-import { User, Mail, Calendar, Camera, Lock, Save, Eye, EyeOff, Trash2, AlertTriangle } from 'lucide-react';
+import { Lock, Eye, EyeOff, Trash2, AlertTriangle, Bell, Volume2, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
@@ -20,13 +17,7 @@ import toast from 'react-hot-toast';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-
-  // Profile form
-  const [profileData, setProfileData] = useState({ name: '', bio: '' });
-  const [updatingProfile, setUpdatingProfile] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Password form
   const [passwordData, setPasswordData] = useState({
@@ -44,133 +35,33 @@ export default function SettingsPage() {
   const [deletePassword, setDeletePassword] = useState('');
   const [deletingAccount, setDeletingAccount] = useState(false);
 
-  useEffect(() => {
-    fetchUserProfile();
-  }, []);
-
-  const fetchUserProfile = async () => {
-    try {
-      const response = await userService.getProfile();
-      if (response.success) {
-        setUser(response.user);
-        setProfileData({
-          name: response.user.name || '',
-          bio: response.user.bio || ''
-        });
-      }
-    } catch (error) {
-      if (error.response?.status !== 401) {
-        console.error('Failed to fetch user profile:', error);
-        toast.error('Failed to load profile');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleProfileUpdate = async (e) => {
+  const handlePasswordUpdate = async (e) => {
     e.preventDefault();
-
-    setUpdatingProfile(true);
-    try {
-      const response = await userService.updateProfile(profileData);
-      if (response.success) {
-        setUser(response.user);
-        toast.success('Profile updated successfully');
-      }
-    } catch (error) {
-      console.error('Failed to update profile:', error);
-      toast.error(error.response?.data?.message || 'Failed to update profile');
-    } finally {
-      setUpdatingProfile(false);
-    }
-  };
-
-  const handleAvatarUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file');
-      return;
-    }
-
-    // Validate file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size should be less than 5MB');
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const response = await userService.uploadAvatar(file);
-      if (response.success) {
-        setUser({ ...user, avatar: response.avatar });
-        toast.success('Avatar updated successfully');
-      }
-    } catch (error) {
-      console.error('Failed to upload avatar:', error);
-      toast.error(error.response?.data?.message || 'Failed to upload avatar');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleDeleteAvatar = async () => {
-    if (!confirm('Are you sure you want to delete your avatar?')) return;
-
-    try {
-      const response = await userService.deleteAvatar();
-      if (response.success) {
-        setUser({ ...user, avatar: null });
-        toast.success('Avatar deleted successfully');
-      }
-    } catch (error) {
-      console.error('Failed to delete avatar:', error);
-      toast.error('Failed to delete avatar');
-    }
-  };
-
-  const handlePasswordChange = async (e) => {
-    e.preventDefault();
-
-    // Validation
-    if (!passwordData.oldPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-      toast.error('Please fill all password fields');
-      return;
-    }
-
-    if (passwordData.newPassword.length < 6) {
-      toast.error('New password must be at least 6 characters');
-      return;
-    }
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast.error('New passwords do not match');
       return;
     }
 
-    if (passwordData.oldPassword === passwordData.newPassword) {
-      toast.error('New password must be different from current password');
+    if (passwordData.newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
       return;
     }
 
     setUpdatingPassword(true);
     try {
-      const response = await userService.changePassword(
-        passwordData.oldPassword,
-        passwordData.newPassword
-      );
+      const response = await authService.changePassword({
+        oldPassword: passwordData.oldPassword,
+        newPassword: passwordData.newPassword
+      });
 
       if (response.success) {
         toast.success('Password updated successfully');
         setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
       }
     } catch (error) {
-      console.error('Failed to change password:', error);
-      const message = error.response?.data?.message || 'Failed to change password';
-      toast.error(message);
+      console.error('Failed to update password:', error);
+      toast.error(error.response?.data?.message || 'Failed to update password');
     } finally {
       setUpdatingPassword(false);
     }
@@ -184,198 +75,42 @@ export default function SettingsPage() {
 
     setDeletingAccount(true);
     try {
-      const response = await userService.deleteAccount(deletePassword);
-
+      const response = await authService.deleteAccount({ password: deletePassword });
       if (response.success) {
         toast.success('Account deleted successfully');
-        // Logout and redirect
-        await authService.logout();
+        localStorage.clear();
         navigate('/auth/login');
       }
     } catch (error) {
       console.error('Failed to delete account:', error);
-      const message = error.response?.data?.message || 'Failed to delete account';
-      toast.error(message);
+      toast.error(error.response?.data?.message || 'Failed to delete account');
     } finally {
       setDeletingAccount(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <User className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-          <p className="text-gray-500">Failed to load settings</p>
-        </div>
-      </div>
-    );
-  }
-
-  const displayName = user.name || user.email.split('@')[0];
-
   return (
     <div className="min-h-full bg-white p-6">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-5xl font-bold text-gray-900 mb-2">Settings</h1>
-          <p className="text-gray-500 text-lg">Manage your account settings and preferences</p>
+          <p className="text-gray-500 text-lg">Manage your application preferences and security</p>
         </div>
 
-        {/* Profile Section */}
-        <div className="bg-gray-50 rounded-3xl p-8 mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Profile</h2>
-
-          {/* Avatar */}
-          <div className="flex items-center gap-6 mb-8">
-            <div className="relative group">
-              <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg">
-                {user.avatar ? (
-                  <img src={user.avatar} alt={displayName} className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-12 h-12 text-white" />
-                )}
-              </div>
-              <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                {uploading ? (
-                  <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Camera className="w-6 h-6 text-white" />
-                )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                  className="hidden"
-                  disabled={uploading}
-                />
-              </label>
-              {user.avatar && (
-                <button
-                  onClick={handleDeleteAvatar}
-                  className="absolute -bottom-1 -right-1 p-1.5 bg-red-500 hover:bg-red-600 rounded-full text-white shadow-lg transition-colors"
-                  title="Delete avatar"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              )}
+        {/* Security Section */}
+        <div className="bg-gray-50 rounded-2xl p-8 mb-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-emerald-100 rounded-lg">
+              <Lock className="w-6 h-6 text-emerald-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 mb-1">{displayName}</h3>
-              <p className="text-sm text-gray-500">Click on avatar to change or delete</p>
+              <h2 className="text-2xl font-bold text-gray-900">Security</h2>
+              <p className="text-sm text-gray-500">Change your password to keep your account secure</p>
             </div>
           </div>
 
-          {/* Profile Form */}
-          <form onSubmit={handleProfileUpdate} className="space-y-4">
-            <div>
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                type="text"
-                placeholder="Enter your name"
-                value={profileData.name}
-                onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                className="bg-white border-gray-300"
-                disabled={updatingProfile}
-                maxLength={100}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="bio">Bio</Label>
-              <Textarea
-                id="bio"
-                placeholder="Tell us about yourself"
-                value={profileData.bio}
-                onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
-                className="bg-white border-gray-300 resize-none"
-                disabled={updatingProfile}
-                maxLength={500}
-                rows={4}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                {profileData.bio.length}/500 characters
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={user.email}
-                disabled
-                className="bg-gray-100 border-gray-300 cursor-not-allowed"
-              />
-              <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
-            </div>
-
-            <Button
-              type="submit"
-              className="bg-emerald-500 hover:bg-emerald-600 gap-2"
-              disabled={updatingProfile}
-            >
-              {updatingProfile ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Save Changes
-                </>
-              )}
-            </Button>
-          </form>
-        </div>
-
-        {/* Account Information */}
-        <div className="bg-gray-50 rounded-3xl p-8 mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Account Information</h2>
-
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <Mail className="w-5 h-5 text-gray-500" />
-              <div>
-                <p className="text-sm text-gray-500">Email</p>
-                <p className="font-medium text-gray-900">{user.email}</p>
-              </div>
-            </div>
-
-            <Separator className="bg-gray-200" />
-
-            <div className="flex items-center gap-3">
-              <Calendar className="w-5 h-5 text-gray-500" />
-              <div>
-                <p className="text-sm text-gray-500">Member Since</p>
-                <p className="font-medium text-gray-900">
-                  {new Date(user.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Change Password */}
-        <div className="bg-gray-50 rounded-3xl p-8 mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Change Password</h2>
-
-          <form onSubmit={handlePasswordChange} className="space-y-4">
+          <form onSubmit={handlePasswordUpdate} className="space-y-4">
             <div>
               <Label htmlFor="oldPassword">Current Password</Label>
               <div className="relative">
@@ -391,7 +126,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => setShowOldPassword(!showOldPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   {showOldPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -404,7 +139,7 @@ export default function SettingsPage() {
                 <Input
                   id="newPassword"
                   type={showNewPassword ? 'text' : 'password'}
-                  placeholder="Enter new password (min 6 characters)"
+                  placeholder="Enter new password"
                   value={passwordData.newPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                   className="bg-white border-gray-300 pr-10"
@@ -413,7 +148,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -435,7 +170,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -462,78 +197,138 @@ export default function SettingsPage() {
           </form>
         </div>
 
-        {/* Danger Zone */}
-        <div className="bg-red-50 border-2 border-red-200 rounded-3xl p-8">
-          <h2 className="text-2xl font-bold text-red-900 mb-2 flex items-center gap-2">
-            <AlertTriangle className="w-6 h-6" />
-            Danger Zone
-          </h2>
-          <p className="text-red-700 mb-6">
-            Once you delete your account, there is no going back. Please be certain.
-          </p>
+        {/* Preferences Section */}
+        <div className="bg-gray-50 rounded-2xl p-8 mb-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Palette className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Preferences</h2>
+              <p className="text-sm text-gray-500">Customize your app experience</p>
+            </div>
+          </div>
 
-          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <Button
-              variant="destructive"
-              onClick={() => setIsDeleteDialogOpen(true)}
-              className="bg-red-600 hover:bg-red-700 gap-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete Account
-            </Button>
-
-            <DialogContent className="bg-white">
-              <DialogHeader>
-                <DialogTitle className="text-red-900">Delete Account</DialogTitle>
-                <DialogDescription className="text-red-700">
-                  This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-4 py-4">
-                <Label htmlFor="deletePassword">Enter your password to confirm</Label>
-                <Input
-                  id="deletePassword"
-                  type="password"
-                  placeholder="Your password"
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                  className="bg-white border-gray-300"
-                  disabled={deletingAccount}
-                />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+              <div className="flex items-center gap-3">
+                <Bell className="w-5 h-5 text-gray-500" />
+                <div>
+                  <p className="font-medium text-gray-900">Notifications</p>
+                  <p className="text-sm text-gray-500">Receive updates about new releases</p>
+                </div>
               </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" className="sr-only peer" defaultChecked />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+              </label>
+            </div>
 
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsDeleteDialogOpen(false);
-                    setDeletePassword('');
-                  }}
-                  disabled={deletingAccount}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDeleteAccount}
-                  disabled={deletingAccount}
-                  className="bg-red-600 hover:bg-red-700"
-                >
-                  {deletingAccount ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                      Deleting...
-                    </>
-                  ) : (
-                    'Delete My Account'
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+            <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+              <div className="flex items-center gap-3">
+                <Volume2 className="w-5 h-5 text-gray-500" />
+                <div>
+                  <p className="font-medium text-gray-900">Auto-play</p>
+                  <p className="text-sm text-gray-500">Automatically play similar songs</p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" className="sr-only peer" />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="bg-red-50 rounded-2xl p-8 border-2 border-red-200">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-red-100 rounded-lg">
+              <AlertTriangle className="w-6 h-6 text-red-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-red-600">Danger Zone</h2>
+              <p className="text-sm text-red-600/80">Irreversible actions</p>
+            </div>
+          </div>
+          <p className="text-gray-600 mb-6">
+            Once you delete your account, there is no going back. All your data will be permanently removed.
+          </p>
+          <Button
+            onClick={() => setIsDeleteDialogOpen(true)}
+            className="bg-red-600 hover:bg-red-700 gap-2"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete Account
+          </Button>
         </div>
       </div>
+
+      {/* Delete Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5" />
+              Delete Account
+            </DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete your account and remove all your data.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-800 font-medium">
+                ⚠️ All your playlists, liked songs, and listening history will be permanently deleted.
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="deletePassword">Enter your password to confirm</Label>
+              <Input
+                id="deletePassword"
+                type="password"
+                placeholder="Enter your password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                className="bg-white border-gray-300"
+                disabled={deletingAccount}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setDeletePassword('');
+              }}
+              disabled={deletingAccount}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteAccount}
+              disabled={deletingAccount || !deletePassword}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deletingAccount ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete My Account
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

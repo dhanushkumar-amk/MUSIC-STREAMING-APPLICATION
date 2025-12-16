@@ -12,7 +12,7 @@ export default function MainLayout() {
   return (
     <div className='h-screen bg-white flex flex-col'>
       {/* Upper Area: Sidebar + Main Content */}
-      <div className='flex h-[calc(100vh-90px)]'>
+      <div className={`flex ${track ? 'h-[calc(100vh-90px)]' : 'h-full'}`}>
 
         {/* Sidebar (Fixed width) */}
         <Sidebar className="hidden md:flex w-[240px] lg:w-[280px]" />

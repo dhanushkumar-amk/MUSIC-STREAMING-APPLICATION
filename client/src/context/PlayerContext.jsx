@@ -50,6 +50,56 @@ export const PlayerProvider = ({ children }) => {
   // EQ Frequencies (10-band)
   const EQ_FREQUENCIES = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 
+  // Setup audio event listeners
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      // Auto-play next song based on loop mode
+      if (loopMode === 'one') {
+        audio.currentTime = 0;
+        audio.play();
+        setIsPlaying(true);
+      } else if (loopMode === 'all' || currentIndex < queue.length - 1) {
+        next();
+      }
+    };
+
+    const handlePlay = () => {
+      setIsPlaying(true);
+    };
+
+    const handlePause = () => {
+      setIsPlaying(false);
+    };
+
+    // Add event listeners
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+
+    // Cleanup
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+    };
+  }, [loopMode, currentIndex, queue.length]);
+
   // Initialize Web Audio API
   const initAudioContext = () => {
     // DISABLED: Using native HTML5 audio for better quality
@@ -417,6 +467,13 @@ export const PlayerProvider = ({ children }) => {
     await playSong(prevSong, queue, prevIndex);
   };
 
+  // Seek to specific time
+  const seek = (time) => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = time;
+    setCurrentTime(time);
+  };
+
   // Handle song end
   const handleSongEnd = async () => {
     await trackPlayEnd(false);
@@ -533,6 +590,13 @@ export const PlayerProvider = ({ children }) => {
     setAlbumsData(data);
   };
 
+  // Aliases for Player component compatibility
+  const currentSong = track;
+  const togglePlay = togglePlayPause;
+  const playNext = next;
+  const playPrevious = previous;
+  const cycleLoopMode = toggleLoop;
+
   const value = {
     audioRef,
     track,
@@ -546,6 +610,7 @@ export const PlayerProvider = ({ children }) => {
     currentTime,
     duration,
     volume,
+    setVolume: changeVolume,
     queue,
     setQueue,
     currentIndex,
@@ -558,6 +623,7 @@ export const PlayerProvider = ({ children }) => {
     togglePlayPause,
     next,
     previous,
+    seek,
     seekTo,
     changeVolume,
     toggleShuffle,
@@ -566,6 +632,12 @@ export const PlayerProvider = ({ children }) => {
     playNextInQueue,
     getSongsData,
     getAlbumsData,
+    // Aliases for Player component
+    currentSong,
+    togglePlay,
+    playNext,
+    playPrevious,
+    cycleLoopMode,
   };
 
   return (
