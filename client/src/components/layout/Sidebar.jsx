@@ -1,20 +1,23 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Search, Library, Plus, Heart, Disc, ListMusic, User } from "lucide-react";
+import { Home, Search, Library, Plus, Heart, Disc, ListMusic, User, Music } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from "react";
 import { playlistService } from "@/services/music";
 
+// Sidebar component - Listening Party moved to navbar
+
 const sidebarItems = [
   { icon: Home, label: "Discover", href: "/home" },
   { icon: Search, label: "Search", href: "/search" },
+  { icon: Music, label: "All Songs", href: "/songs" },
   { icon: Disc, label: "Albums", href: "/albums" },
   { icon: ListMusic, label: "Playlists", href: "/playlists" },
   { icon: User, label: "Profile", href: "/profile" },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ onNavigate }) {
   const location = useLocation();
   const [playlists, setPlaylists] = useState([]);
 
@@ -36,17 +39,23 @@ export default function Sidebar() {
     }
   };
 
+  const handleLinkClick = () => {
+    if (onNavigate) {
+      onNavigate();
+    }
+  };
+
   return (
-    <div className="hidden md:flex w-20 lg:w-64 h-full flex-col gap-3 p-3">
+    <div className="flex w-full md:w-20 lg:w-64 h-full flex-col gap-3 p-3 bg-white">
       {/* Brand & Nav */}
       <div className="bg-gray-50 rounded-2xl p-5 flex flex-col gap-5">
-        <Link to="/home" className="flex items-center gap-3 px-1 hover:opacity-70 transition-opacity">
-            <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center">
+        <Link to="/home" onClick={handleLinkClick} className="flex items-center gap-3 px-1 hover:opacity-70 transition-opacity">
+            <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center shrink-0">
                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-white">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" />
                 </svg>
             </div>
-            <span className="font-bold text-lg text-gray-900 hidden lg:block">SoundWave</span>
+            <span className="font-bold text-lg text-gray-900 md:hidden lg:block">SoundWave</span>
         </Link>
 
         <nav className="flex flex-col gap-1">
@@ -54,6 +63,7 @@ export default function Sidebar() {
             <Link
               key={item.href}
               to={item.href}
+              onClick={handleLinkClick}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium",
                 location.pathname === item.href
@@ -61,8 +71,8 @@ export default function Sidebar() {
                     : "text-gray-700 hover:bg-gray-100"
               )}
             >
-              <item.icon className="w-5 h-5" />
-              <span className="hidden lg:block text-sm">{item.label}</span>
+              <item.icon className="w-5 h-5 shrink-0" />
+              <span className="text-sm md:hidden lg:block">{item.label}</span>
             </Link>
           ))}
         </nav>

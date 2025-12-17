@@ -21,6 +21,7 @@ import { PlayerProvider } from "./context/PlayerContext"
 import { SessionProvider } from "./context/SessionContext"
 import CommandPalette from "./components/CommandPalette"
 import SessionPage from "./pages/SessionPage"
+import AllSongsPage from "./pages/AllSongsPage"
 
 const App = () => {
   return (
@@ -40,6 +41,7 @@ const App = () => {
               }>
                   <Route path="/home" element={<HomePage />} />
                   <Route path="/search" element={<SearchPage />} />
+                  <Route path="/songs" element={<AllSongsPage />} />
                   <Route path="/albums" element={<AlbumsPage />} />
                   <Route path="/playlists" element={<PlaylistsPage />} />
                   <Route path="/playlist/:playlistId" element={<PlaylistDetailPage />} />

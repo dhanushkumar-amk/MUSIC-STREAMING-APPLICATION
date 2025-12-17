@@ -75,10 +75,16 @@ export const SessionProvider = ({ children }) => {
 
   // Socket event listeners
   useEffect(() => {
-    if (!socketService.getSocket()) return;
+    if (!socketService.getSocket()) {
+      console.warn('⚠️ Socket not available for event listeners');
+      return;
+    }
+
+    console.log('🎧 Setting up socket event listeners...');
 
     // Session state
     socketService.on('session:state', (sessionData) => {
+      console.log('📡 Received session:state event:', sessionData);
       setSession(sessionData);
       setParticipants(sessionData.participants);
       setCurrentSong(sessionData.currentSong);
@@ -88,35 +94,50 @@ export const SessionProvider = ({ children }) => {
 
     // Session updated
     socketService.on('session:updated', (sessionData) => {
+      console.log('📡 Received session:updated event:', sessionData);
       setSession(sessionData);
     });
 
     // User joined
     socketService.on('user:joined', ({ userId, session: updatedSession }) => {
+      console.log('📡 Received user:joined event:', { userId, session: updatedSession });
       setParticipants(updatedSession.participants);
       toast.success('Someone joined the session');
     });
 
     // User left
     socketService.on('user:left', ({ userId }) => {
+      console.log('📡 Received user:left event:', { userId });
       setParticipants(prev => prev.filter(p => p.userId._id !== userId));
       toast('Someone left the session');
     });
 
     // Playback sync
     socketService.on('playback:sync', ({ currentSong, position, isPlaying, lastUpdate }) => {
-      console.log('📡 Received playback:sync event:', { currentSong, isPlaying });
+      console.log('📡 Received playback:sync event:', { currentSong, position, isPlaying, lastUpdate });
 
       setCurrentSong(currentSong);
       setIsPlaying(isPlaying);
 
       // Actually play the audio for other users!
-      if (currentSong && isPlaying && playerContext && playerContext.playWithId) {
-        console.log('🎵 Playing synced song for other user:', currentSong._id);
-        playerContext.playWithId(currentSong._id);
+      if (currentSong && isPlaying && playerContext) {
+        if (playerContext.playWithId) {
+          console.log('🎵 Playing synced song for other user:', currentSong._id);
+          playerContext.playWithId(currentSong._id);
+        } else if (playerContext.play) {
+          console.log('🎵 Resuming playback for other user');
+          playerContext.play();
+        }
       } else if (!isPlaying && playerContext && playerContext.pause) {
         console.log('⏸️ Pausing for other user');
         playerContext.pause();
+      } else {
+        console.warn('⚠️ PlayerContext not available or missing methods:', {
+          hasPlayerContext: !!playerContext,
+          hasPlayWithId: !!playerContext?.playWithId,
+          hasPlay: !!playerContext?.play,
+          hasPause: !!playerContext?.pause
+        });
       }
 
       // Emit event for player to sync position
@@ -127,16 +148,19 @@ export const SessionProvider = ({ children }) => {
 
     // Queue updated
     socketService.on('queue:updated', ({ queue }) => {
+      console.log('📡 Received queue:updated event:', { queue });
       setQueue(queue);
     });
 
     // Chat message
     socketService.on('chat:message', (message) => {
+      console.log('📡 Received chat:message event:', message);
       setMessages(prev => [...prev, message]);
     });
 
     // Typing indicator
     socketService.on('chat:typing', ({ userId, isTyping }) => {
+      console.log('📡 Received chat:typing event:', { userId, isTyping });
       if (isTyping) {
         setTypingUsers(prev => [...new Set([...prev, userId])]);
       } else {
@@ -146,6 +170,7 @@ export const SessionProvider = ({ children }) => {
 
     // Reaction
     socketService.on('reaction:added', ({ userId, emoji }) => {
+      console.log('📡 Received reaction:added event:', { userId, emoji });
       // Show floating emoji animation
       window.dispatchEvent(new CustomEvent('session:reaction', {
         detail: { userId, emoji }
@@ -154,10 +179,14 @@ export const SessionProvider = ({ children }) => {
 
     // Error
     socketService.on('error', ({ message }) => {
+      console.error('📡 Received error event:', message);
       toast.error(message);
     });
 
+    console.log('✅ Socket event listeners set up successfully');
+
     return () => {
+      console.log('🧹 Cleaning up socket event listeners');
       socketService.off('session:state');
       socketService.off('session:updated');
       socketService.off('user:joined');
@@ -169,7 +198,7 @@ export const SessionProvider = ({ children }) => {
       socketService.off('reaction:added');
       socketService.off('error');
     };
-  }, []);
+  }, [playerContext]); // Add playerContext as dependency
 
   // Create session
   const createSession = async (name, privacy = 'private', settings = {}) => {

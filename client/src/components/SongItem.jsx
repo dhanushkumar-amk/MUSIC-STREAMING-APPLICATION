@@ -18,8 +18,12 @@ const SongItem = ({ image, name, desc, id, song }) => {
         <div className="relative aspect-square">
           <img
             className='w-full h-full object-cover transition-transform duration-500 group-hover:scale-105'
-            src={image}
+            src={image || `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect width='300' height='300' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='80' fill='%239ca3af'%3E♪%3C/text%3E%3C/svg%3E`}
             alt={name}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect width='300' height='300' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='80' fill='%239ca3af'%3E♪%3C/text%3E%3C/svg%3E`;
+            }}
           />
 
           {/* Download Button - Top Right */}

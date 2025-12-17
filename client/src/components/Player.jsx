@@ -380,7 +380,7 @@ export default function Player() {
     <>
       {/* Queue Panel */}
       {showQueue && (
-        <div className="fixed right-0 bottom-0 top-0 w-96 bg-white border-l border-gray-200 shadow-2xl z-50 flex flex-col animate-in slide-in-from-right">
+        <div className="fixed right-0 bottom-0 top-0 w-full md:w-96 bg-white border-l border-gray-200 shadow-2xl z-50 flex flex-col animate-in slide-in-from-right">
           {/* Queue Header */}
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             <h2 className="text-lg font-bold text-gray-900">Queue</h2>
@@ -459,9 +459,99 @@ export default function Player() {
 
       {/* Main Player */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
-        <div className="px-6 py-4">
+        <div className="px-3 sm:px-6 py-3 sm:py-4">
           <div className="max-w-screen-2xl mx-auto">
-            <div className="flex items-center justify-between gap-6">
+            {/* Mobile Layout (< md) */}
+            <div className="md:hidden">
+              {/* Progress Bar - Top */}
+              <div className="mb-3">
+                <div className="relative group">
+                  <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-600 rounded-full transition-all duration-150"
+                      style={{ width: `${(currentTime / duration) * 100}%` }}
+                    ></div>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max={duration || 0}
+                    value={currentTime}
+                    onChange={(e) => seekTo(Number(e.target.value))}
+                    className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-gray-600 mt-1">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(duration)}</span>
+                </div>
+              </div>
+
+              {/* Track Info + Controls */}
+              <div className="flex items-center gap-3">
+                {/* Album Art */}
+                <img
+                  src={track.image}
+                  alt={track.name}
+                  className="w-12 h-12 rounded-lg object-cover shadow-md flex-shrink-0"
+                />
+
+                {/* Track Info */}
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-gray-900 truncate text-sm">{track.name}</p>
+                  <p className="text-xs text-gray-600 truncate">{track.desc || track.artist}</p>
+                </div>
+
+                {/* Mobile Controls */}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={handleLike}
+                    className={`p-2 rounded-full ${
+                      isLiked ? 'text-emerald-600' : 'text-gray-400'
+                    }`}
+                  >
+                    <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+                  </button>
+
+                  <button
+                    onClick={previous}
+                    className="p-2 rounded-full text-gray-700"
+                  >
+                    <SkipBack className="w-5 h-5" />
+                  </button>
+
+                  <button
+                    onClick={togglePlayPause}
+                    className="w-10 h-10 bg-emerald-600 hover:bg-emerald-700 rounded-full flex items-center justify-center text-white"
+                  >
+                    {isPlaying ? (
+                      <Pause className="w-5 h-5 fill-current" />
+                    ) : (
+                      <Play className="w-5 h-5 fill-current ml-0.5" />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={next}
+                    className="p-2 rounded-full text-gray-700"
+                  >
+                    <SkipForward className="w-5 h-5" />
+                  </button>
+
+                  <button
+                    onClick={() => setShowQueue(!showQueue)}
+                    className={`p-2 rounded-full ${
+                      showQueue ? 'text-emerald-600' : 'text-gray-700'
+                    }`}
+                  >
+                    <List className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Desktop Layout (>= md) */}
+            <div className="hidden md:flex items-center justify-between gap-6">
 
               {/* Left: Track Info */}
               <div className="flex items-center gap-4 w-[280px] min-w-[280px]">

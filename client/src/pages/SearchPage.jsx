@@ -96,10 +96,10 @@ export default function SearchPage() {
   const filteredResults = getFilteredResults();
 
   return (
-    <div className="min-h-full bg-white p-6">
+    <div className="min-h-full bg-white p-3 sm:p-6">
       {/* Search Header */}
-      <div className="max-w-4xl mx-auto mb-8">
-        <h1 className="text-5xl font-bold text-gray-900 mb-6">Search</h1>
+      <div className="max-w-4xl mx-auto mb-6 sm:mb-8">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4 sm:mb-6">Search</h1>
 
         {/* Search Input */}
         <form onSubmit={handleSubmit} className="relative">
@@ -111,7 +111,7 @@ export default function SearchPage() {
               onChange={(e) => handleInputChange(e.target.value)}
               onFocus={() => setShowSuggestions(true)}
               placeholder="What do you want to listen to?"
-              className="w-full pl-12 pr-12 py-4 bg-gray-50 border-2 border-gray-200 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition-colors"
+              className="w-full pl-12 pr-12 py-3 sm:py-4 bg-gray-50 border-2 border-gray-200 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition-colors text-sm sm:text-base"
             />
             {query && (
               <button
@@ -153,8 +153,8 @@ export default function SearchPage() {
                           className="w-10 h-10 rounded-lg object-cover"
                         />
                         <div className="flex-1 text-left min-w-0">
-                          <p className="font-medium text-gray-900 truncate">{song.name}</p>
-                          <p className="text-sm text-gray-500 truncate">{song.artist}</p>
+                          <p className="font-medium text-gray-900 truncate text-sm">{song.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{song.artist}</p>
                         </div>
                       </button>
                     ))}
@@ -181,8 +181,8 @@ export default function SearchPage() {
                           className="w-10 h-10 rounded-lg object-cover"
                         />
                         <div className="flex-1 text-left min-w-0">
-                          <p className="font-medium text-gray-900 truncate">{album.name}</p>
-                          <p className="text-sm text-gray-500 truncate">Album</p>
+                          <p className="font-medium text-gray-900 truncate text-sm">{album.name}</p>
+                          <p className="text-xs text-gray-500 truncate">Album</p>
                         </div>
                       </button>
                     ))}
@@ -205,12 +205,12 @@ export default function SearchPage() {
       {!loading && results && (
         <div className="max-w-7xl mx-auto">
           {/* Tabs */}
-          <div className="flex gap-2 mb-8 border-b border-gray-200">
+          <div className="flex gap-1 sm:gap-2 mb-6 sm:mb-8 border-b border-gray-200 overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-6 py-3 font-semibold transition-colors relative ${
+                className={`px-4 sm:px-6 py-2 sm:py-3 font-semibold transition-colors relative whitespace-nowrap text-sm sm:text-base ${
                   activeTab === tab.id
                     ? 'text-gray-900'
                     : 'text-gray-500 hover:text-gray-700'

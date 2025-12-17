@@ -215,46 +215,46 @@ export default function ProfilePage() {
                   Edit Profile
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-white">
+              <DialogContent className="bg-white text-gray-900 max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Edit Profile</DialogTitle>
-                  <DialogDescription>
+                  <DialogTitle className="text-gray-900">Edit Profile</DialogTitle>
+                  <DialogDescription className="text-gray-600">
                     Update your profile information
                   </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                <form onSubmit={handleUpdateProfile} className="space-y-4 mt-4">
                   <div>
-                    <Label htmlFor="name">Name</Label>
+                    <Label htmlFor="name" className="text-gray-900 font-medium">Name</Label>
                     <Input
                       id="name"
                       type="text"
                       placeholder="Enter your name"
                       value={editData.name}
                       onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                      className="bg-white border-gray-300"
+                      className="bg-white border-gray-300 text-gray-900 placeholder-gray-400 mt-1.5"
                       disabled={updating}
                       maxLength={100}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="bio">Bio</Label>
+                    <Label htmlFor="bio" className="text-gray-900 font-medium">Bio</Label>
                     <Textarea
                       id="bio"
                       placeholder="Tell us about yourself"
                       value={editData.bio}
                       onChange={(e) => setEditData({ ...editData, bio: e.target.value })}
-                      className="bg-white border-gray-300 resize-none"
+                      className="bg-white border-gray-300 resize-none text-gray-900 placeholder-gray-400 mt-1.5"
                       disabled={updating}
                       maxLength={500}
                       rows={4}
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500 mt-1.5">
                       {editData.bio.length}/500 characters
                     </p>
                   </div>
                   <Button
                     type="submit"
-                    className="w-full bg-emerald-500 hover:bg-emerald-600 gap-2"
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 gap-2 text-white"
                     disabled={updating}
                   >
                     {updating ? (
