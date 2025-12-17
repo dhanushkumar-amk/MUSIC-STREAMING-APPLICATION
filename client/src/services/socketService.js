@@ -172,4 +172,11 @@ class SocketService {
 
 // Export singleton instance
 const socketService = new SocketService();
+
+// Expose to window for debugging (development only)
+if (typeof window !== 'undefined') {
+  window.socketService = socketService;
+  console.log('🔍 socketService exposed to window for debugging');
+}
+
 export default socketService;

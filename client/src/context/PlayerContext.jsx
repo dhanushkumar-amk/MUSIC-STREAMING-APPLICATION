@@ -426,6 +426,26 @@ export const PlayerProvider = ({ children }) => {
     }
   };
 
+  // Explicit pause method for session sync
+  const pause = () => {
+    if (!audioRef.current) return;
+    console.log('🎵 PlayerContext: Pausing audio');
+    audioRef.current.pause();
+    setIsPlaying(false);
+  };
+
+  // Explicit play method for session sync
+  const play = async () => {
+    if (!audioRef.current) return;
+    console.log('🎵 PlayerContext: Playing audio');
+    try {
+      await audioRef.current.play();
+      setIsPlaying(true);
+    } catch (error) {
+      console.error('Play error:', error);
+    }
+  };
+
   // Next song
   const next = async () => {
     if (queue.length === 0) return;
@@ -621,6 +641,8 @@ export const PlayerProvider = ({ children }) => {
     playSong,
     playWithId,
     togglePlayPause,
+    pause,  // Add explicit pause method
+    play,   // Add explicit play method
     next,
     previous,
     seek,

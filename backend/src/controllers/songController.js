@@ -95,4 +95,48 @@ const removeSong = async (req, res) => {
     }
 }
 
-export { addSong, listSong, removeSong }
+/* GET PAGINATED SONGS */
+const getPaginatedSongs = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const search = req.query.search || '';
+        const skip = (page - 1) * limit;
+
+        let query = {};
+        if (search) {
+            query = {
+                $or: [
+                    { name: { $regex: search, $options: 'i' } },
+                    { desc: { $regex: search, $options: 'i' } },
+                    { album: { $regex: search, $options: 'i' } }
+                ]
+            };
+        }
+
+        const [songs, total] = await Promise.all([
+            songModel.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }),
+            songModel.countDocuments(query)
+        ]);
+
+        const totalPages = Math.ceil(total / limit);
+
+        res.json({
+            success: true,
+            songs,
+            pagination: {
+                currentPage: page,
+                totalPages,
+                totalSongs: total,
+                limit,
+                hasNext: page < totalPages,
+                hasPrev: page > 1
+            }
+        });
+    } catch (error) {
+        console.error("Error fetching paginated songs:", error);
+        res.status(500).json({ success: false, message: "Error fetching songs" });
+    }
+}
+
+export { addSong, listSong, removeSong, getPaginatedSongs }

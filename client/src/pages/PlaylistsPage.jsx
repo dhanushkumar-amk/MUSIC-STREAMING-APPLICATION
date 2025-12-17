@@ -104,26 +104,26 @@ export default function PlaylistsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="p-8">
+    <div className="min-h-screen p-3 sm:p-4 md:p-6 lg:p-8 pb-24">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Your Playlists</h1>
-        <p className="text-gray-600">Create and manage your music collections</p>
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">Your Playlists</h1>
+        <p className="text-sm sm:text-base text-gray-600">Create and manage your music collections</p>
       </div>
 
       {/* Create Playlist Button */}
       <button
         onClick={() => setShowCreateModal(true)}
-        className="mb-8 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full font-medium flex items-center gap-2 transition-colors shadow-lg hover:shadow-xl"
+        className="mb-6 sm:mb-8 px-4 sm:px-6 py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full font-medium flex items-center gap-2 transition-colors shadow-lg hover:shadow-xl text-sm sm:text-base"
       >
-        <Plus className="w-5 h-5" />
+        <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
         Create Playlist
       </button>
 
@@ -230,15 +230,15 @@ export default function PlaylistsPage() {
                           className="fixed inset-0 z-10"
                           onClick={() => setActiveMenu(null)}
                         />
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-20">
+                        <div className="absolute right-0 bottom-full mb-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-20">
                           <button
                             onClick={() => {
                               setEditingPlaylist(playlist);
                               setActiveMenu(null);
                             }}
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                            className="w-full px-4 py-2 text-left text-sm text-gray-900 hover:bg-gray-100 flex items-center gap-2"
                           >
-                            <Edit2 className="w-4 h-4" />
+                            <Edit2 className="w-4 h-4 text-gray-700" />
                             Edit Details
                           </button>
                           <button
@@ -246,9 +246,9 @@ export default function PlaylistsPage() {
                               handleToggleCollaborative(playlist._id);
                               setActiveMenu(null);
                             }}
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                            className="w-full px-4 py-2 text-left text-sm text-gray-900 hover:bg-gray-100 flex items-center gap-2"
                           >
-                            <Users className="w-4 h-4" />
+                            <Users className="w-4 h-4 text-gray-700" />
                             {playlist.collaborative ? 'Make Private' : 'Make Collaborative'}
                           </button>
                           <button

@@ -104,12 +104,26 @@ export const getRecentlyPlayed = async (req, res) => {
     const recentPlays = await RecentlyPlayed.find({ userId })
       .sort({ playedAt: -1 })
       .limit(30)
-      .populate("songId");
+      .populate({
+        path: 'songId',
+        select: 'name desc album image file duration'  // Explicitly select all needed fields
+      });
 
-    const formatted = recentPlays.map((item) => ({
+    // Filter out entries where song was deleted
+    const validPlays = recentPlays.filter(item => item.songId !== null);
+
+    const formatted = validPlays.map((item) => ({
       id: item._id,
       playedAt: item.playedAt,
-      song: item.songId,
+      item: {
+        _id: item.songId._id,
+        name: item.songId.name,
+        desc: item.songId.desc,
+        album: item.songId.album,
+        image: item.songId.image,
+        file: item.songId.file,
+        duration: item.songId.duration
+      },
       playDuration: item.playDuration,
       skipped: item.skipped,
       contextType: item.contextType,
