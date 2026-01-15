@@ -1,6 +1,7 @@
 import prisma from "../config/database.js";
 import Song from "../models/songModel.js";
 import redis from "../config/redis.js";
+import { safeRedisGet, safeRedisSet, safeRedisDel } from "../utils/redisHelpers.js";
 
 /* CREATE PLAYLIST */
 export const createPlaylist = async (req, res) => {
@@ -40,7 +41,7 @@ export const getPlaylists = async (req, res) => {
     const cacheKey = `playlists:${userId}`;
 
     // Check cache
-    const cached = await redis.get(cacheKey);
+    const cached = await safeRedisGet(cacheKey);
     if (cached) {
       return res.json({ success: true, playlists: cached, cached: true });
     }
@@ -59,7 +60,7 @@ export const getPlaylists = async (req, res) => {
     );
 
     // Cache for 5 minutes
-    await redis.set(cacheKey, playlistsWithSongs, { ex: 300 });
+    await safeRedisSet(cacheKey, playlistsWithSongs, { ex: 300 });
 
     res.json({ success: true, playlists: playlistsWithSongs, cached: false });
 

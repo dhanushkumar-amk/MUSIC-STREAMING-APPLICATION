@@ -23,11 +23,25 @@ const ensureLibrary = async userId => {
 /* ---------------------------------------
    INVALIDATE CACHE HELPERS
 ----------------------------------------*/
-const invalidateSongCache = userId =>
-  redis.del(`cache:likedSongs:${userId}`);
+const invalidateSongCache = async userId => {
+  if (redis) {
+    try {
+      await redis.del(`cache:likedSongs:${userId}`);
+    } catch (err) {
+      console.warn('Redis delete failed:', err.message);
+    }
+  }
+};
 
-const invalidateAlbumCache = userId =>
-  redis.del(`cache:likedAlbums:${userId}`);
+const invalidateAlbumCache = async userId => {
+  if (redis) {
+    try {
+      await redis.del(`cache:likedAlbums:${userId}`);
+    } catch (err) {
+      console.warn('Redis delete failed:', err.message);
+    }
+  }
+};
 
 /* ---------------------------------------
    LIKE SONG
@@ -95,9 +109,16 @@ export const getLikedSongs = async (req, res) => {
   try {
     const cacheKey = `cache:likedSongs:${req.userId}`;
 
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return res.json({ success: true, songs: cached });
+    // Try cache only if Redis is available
+    if (redis) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          return res.json({ success: true, songs: cached });
+        }
+      } catch (err) {
+        console.warn('Redis get failed:', err.message);
+      }
     }
 
     const lib = await ensureLibrary(req.userId);
@@ -106,7 +127,14 @@ export const getLikedSongs = async (req, res) => {
       _id: { $in: lib.likedSongIds }
     });
 
-    await redis.set(cacheKey, songs, { ex: 300 }); // cache 5 min
+    // Try to cache only if Redis is available
+    if (redis) {
+      try {
+        await redis.set(cacheKey, songs, { ex: 300 }); // cache 5 min
+      } catch (err) {
+        console.warn('Redis set failed:', err.message);
+      }
+    }
 
     res.json({ success: true, songs });
   } catch (error) {
@@ -181,9 +209,16 @@ export const getLikedAlbums = async (req, res) => {
   try {
     const cacheKey = `cache:likedAlbums:${req.userId}`;
 
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return res.json({ success: true, albums: cached });
+    // Try cache only if Redis is available
+    if (redis) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          return res.json({ success: true, albums: cached });
+        }
+      } catch (err) {
+        console.warn('Redis get failed:', err.message);
+      }
     }
 
     const lib = await ensureLibrary(req.userId);
@@ -192,7 +227,14 @@ export const getLikedAlbums = async (req, res) => {
       _id: { $in: lib.likedAlbumIds }
     });
 
-    await redis.set(cacheKey, albums, { ex: 300 }); // cache 5 min
+    // Try to cache only if Redis is available
+    if (redis) {
+      try {
+        await redis.set(cacheKey, albums, { ex: 300 }); // cache 5 min
+      } catch (err) {
+        console.warn('Redis set failed:', err.message);
+      }
+    }
 
     res.json({ success: true, albums });
   } catch (error) {
