@@ -1,4 +1,4 @@
-import Library from "../models/library.model.js";
+import prisma from "../config/database.js";
 import songModel from "../models/songModel.js";
 import albumModel from "../models/albumModel.js";
 import redis from "../config/redis.js";   // caching layer
@@ -7,9 +7,15 @@ import redis from "../config/redis.js";   // caching layer
    INIT USER LIBRARY IF NOT EXISTS
 ----------------------------------------*/
 const ensureLibrary = async userId => {
-  let lib = await Library.findOne({ userId });
+  let lib = await prisma.library.findUnique({ where: { userId } });
   if (!lib) {
-    lib = await Library.create({ userId, likedSongs: [], likedAlbums: [] });
+    lib = await prisma.library.create({
+      data: {
+        userId,
+        likedSongIds: [],
+        likedAlbumIds: []
+      }
+    });
   }
   return lib;
 };
@@ -17,11 +23,25 @@ const ensureLibrary = async userId => {
 /* ---------------------------------------
    INVALIDATE CACHE HELPERS
 ----------------------------------------*/
-const invalidateSongCache = userId =>
-  redis.del(`cache:likedSongs:${userId}`);
+const invalidateSongCache = async userId => {
+  if (redis) {
+    try {
+      await redis.del(`cache:likedSongs:${userId}`);
+    } catch (err) {
+      console.warn('Redis delete failed:', err.message);
+    }
+  }
+};
 
-const invalidateAlbumCache = userId =>
-  redis.del(`cache:likedAlbums:${userId}`);
+const invalidateAlbumCache = async userId => {
+  if (redis) {
+    try {
+      await redis.del(`cache:likedAlbums:${userId}`);
+    } catch (err) {
+      console.warn('Redis delete failed:', err.message);
+    }
+  }
+};
 
 /* ---------------------------------------
    LIKE SONG
@@ -36,14 +56,21 @@ export const likeSong = async (req, res) => {
 
     const lib = await ensureLibrary(req.userId);
 
-    if (!lib.likedSongs.includes(songId)) {
-      lib.likedSongs.push(songId);
-      await lib.save();
+    if (!lib.likedSongIds.includes(songId)) {
+      await prisma.library.update({
+        where: { userId: req.userId },
+        data: {
+          likedSongIds: {
+            push: songId
+          }
+        }
+      });
       await invalidateSongCache(req.userId);
     }
 
     res.json({ success: true, message: "Song liked" });
-  } catch {
+  } catch (error) {
+    console.error("Like song error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -57,13 +84,20 @@ export const unlikeSong = async (req, res) => {
 
     const lib = await ensureLibrary(req.userId);
 
-    lib.likedSongs = lib.likedSongs.filter(id => id.toString() !== songId);
-    await lib.save();
+    const updatedSongIds = lib.likedSongIds.filter(id => id !== songId);
+
+    await prisma.library.update({
+      where: { userId: req.userId },
+      data: {
+        likedSongIds: updatedSongIds
+      }
+    });
 
     await invalidateSongCache(req.userId);
 
     res.json({ success: true, message: "Song unliked" });
-  } catch {
+  } catch (error) {
+    console.error("Unlike song error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -75,21 +109,36 @@ export const getLikedSongs = async (req, res) => {
   try {
     const cacheKey = `cache:likedSongs:${req.userId}`;
 
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return res.json({ success: true, songs: cached });
+    // Try cache only if Redis is available
+    if (redis) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          return res.json({ success: true, songs: cached });
+        }
+      } catch (err) {
+        console.warn('Redis get failed:', err.message);
+      }
     }
 
     const lib = await ensureLibrary(req.userId);
 
     const songs = await songModel.find({
-      _id: { $in: lib.likedSongs }
+      _id: { $in: lib.likedSongIds }
     });
 
-    await redis.set(cacheKey, songs, { ex: 300 }); // cache 5 min
+    // Try to cache only if Redis is available
+    if (redis) {
+      try {
+        await redis.set(cacheKey, songs, { ex: 300 }); // cache 5 min
+      } catch (err) {
+        console.warn('Redis set failed:', err.message);
+      }
+    }
 
     res.json({ success: true, songs });
-  } catch {
+  } catch (error) {
+    console.error("Get liked songs error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -107,14 +156,21 @@ export const likeAlbum = async (req, res) => {
 
     const lib = await ensureLibrary(req.userId);
 
-    if (!lib.likedAlbums.includes(albumId)) {
-      lib.likedAlbums.push(albumId);
-      await lib.save();
+    if (!lib.likedAlbumIds.includes(albumId)) {
+      await prisma.library.update({
+        where: { userId: req.userId },
+        data: {
+          likedAlbumIds: {
+            push: albumId
+          }
+        }
+      });
       await invalidateAlbumCache(req.userId);
     }
 
     res.json({ success: true, message: "Album liked" });
-  } catch {
+  } catch (error) {
+    console.error("Like album error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -128,13 +184,20 @@ export const unlikeAlbum = async (req, res) => {
 
     const lib = await ensureLibrary(req.userId);
 
-    lib.likedAlbums = lib.likedAlbums.filter(id => id.toString() !== albumId);
-    await lib.save();
+    const updatedAlbumIds = lib.likedAlbumIds.filter(id => id !== albumId);
+
+    await prisma.library.update({
+      where: { userId: req.userId },
+      data: {
+        likedAlbumIds: updatedAlbumIds
+      }
+    });
 
     await invalidateAlbumCache(req.userId);
 
     res.json({ success: true, message: "Album unliked" });
-  } catch {
+  } catch (error) {
+    console.error("Unlike album error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -146,21 +209,36 @@ export const getLikedAlbums = async (req, res) => {
   try {
     const cacheKey = `cache:likedAlbums:${req.userId}`;
 
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return res.json({ success: true, albums: cached });
+    // Try cache only if Redis is available
+    if (redis) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          return res.json({ success: true, albums: cached });
+        }
+      } catch (err) {
+        console.warn('Redis get failed:', err.message);
+      }
     }
 
     const lib = await ensureLibrary(req.userId);
 
     const albums = await albumModel.find({
-      _id: { $in: lib.likedAlbums }
+      _id: { $in: lib.likedAlbumIds }
     });
 
-    await redis.set(cacheKey, albums, { ex: 300 }); // cache 5 min
+    // Try to cache only if Redis is available
+    if (redis) {
+      try {
+        await redis.set(cacheKey, albums, { ex: 300 }); // cache 5 min
+      } catch (err) {
+        console.warn('Redis set failed:', err.message);
+      }
+    }
 
     res.json({ success: true, albums });
-  } catch {
+  } catch (error) {
+    console.error("Get liked albums error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };

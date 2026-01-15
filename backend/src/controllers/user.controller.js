@@ -1,4 +1,4 @@
-import User from "../models/user.model.js";
+import prisma from "../config/database.js";
 import { v2 as cloudinary } from 'cloudinary';
 import bcrypt from "bcrypt";
 import fs from "fs";
@@ -8,7 +8,19 @@ import fs from "fs";
 /* GET USER PROFILE */
 export const getProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
+        const user = await prisma.user.findUnique({
+            where: { id: req.userId },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                avatar: true,
+                bio: true,
+                isEmailVerified: true,
+                createdAt: true,
+                updatedAt: true
+            }
+        });
 
         if (!user) {
             return res.status(404).json({
@@ -20,7 +32,7 @@ export const getProfile = async (req, res) => {
         res.json({
             success: true,
             user: {
-                _id: user._id,
+                _id: user.id,
                 name: user.name,
                 email: user.email,
                 avatar: user.avatar,
@@ -63,11 +75,10 @@ export const updateProfile = async (req, res) => {
         if (name !== undefined) updateData.name = name.trim();
         if (bio !== undefined) updateData.bio = bio.trim();
 
-        const user = await User.findByIdAndUpdate(
-            req.userId,
-            updateData,
-            { new: true, runValidators: true }
-        );
+        const user = await prisma.user.update({
+            where: { id: req.userId },
+            data: updateData
+        });
 
         if (!user) {
             return res.status(404).json({
@@ -79,7 +90,7 @@ export const updateProfile = async (req, res) => {
         res.json({
             success: true,
             user: {
-                _id: user._id,
+                _id: user.id,
                 name: user.name,
                 email: user.email,
                 avatar: user.avatar,
@@ -120,7 +131,10 @@ export const uploadAvatar = async (req, res) => {
         }
 
         // Get current user to delete old avatar if exists
-        const currentUser = await User.findById(req.userId);
+        const currentUser = await prisma.user.findUnique({
+            where: { id: req.userId },
+            select: { avatar: true }
+        });
 
         // Upload new avatar to Cloudinary from buffer (memory storage)
         const uploadPromise = new Promise((resolve, reject) => {
@@ -155,11 +169,10 @@ export const uploadAvatar = async (req, res) => {
         }
 
         // Update user with new avatar
-        const user = await User.findByIdAndUpdate(
-            req.userId,
-            { avatar: imageUpload.secure_url },
-            { new: true }
-        );
+        const user = await prisma.user.update({
+            where: { id: req.userId },
+            data: { avatar: imageUpload.secure_url }
+        });
 
         res.json({
             success: true,
@@ -179,7 +192,10 @@ export const uploadAvatar = async (req, res) => {
 /* DELETE AVATAR */
 export const deleteAvatar = async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
+        const user = await prisma.user.findUnique({
+            where: { id: req.userId },
+            select: { avatar: true }
+        });
 
         if (!user) {
             return res.status(404).json({
@@ -199,8 +215,10 @@ export const deleteAvatar = async (req, res) => {
         }
 
         // Update user
-        user.avatar = null;
-        await user.save();
+        await prisma.user.update({
+            where: { id: req.userId },
+            data: { avatar: null }
+        });
 
         res.json({
             success: true,
@@ -246,7 +264,9 @@ export const changePassword = async (req, res) => {
         }
 
         // Get user with password
-        const user = await User.findById(req.userId).select('+password');
+        const user = await prisma.user.findUnique({
+            where: { id: req.userId }
+        });
 
         if (!user) {
             return res.status(404).json({
@@ -269,8 +289,10 @@ export const changePassword = async (req, res) => {
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
         // Update password
-        user.password = hashedPassword;
-        await user.save();
+        await prisma.user.update({
+            where: { id: req.userId },
+            data: { password: hashedPassword }
+        });
 
         res.json({
             success: true,
@@ -293,25 +315,25 @@ export const getAccountStats = async (req, res) => {
     try {
         const userId = req.userId;
 
-        // Import models dynamically to avoid circular dependencies
-        const Playlist = (await import("../models/playlist.model.js")).default;
-        const Library = (await import("../models/library.model.js")).default;
-        const RecentlyPlayed = (await import("../models/recentlyPlayed.model.js")).default;
-
-        // Get stats in parallel
-        const [playlistCount, likedSongsCount, likedAlbumsCount, recentlyPlayedCount] = await Promise.all([
-            Playlist.countDocuments({ userId }),
-            Library.countDocuments({ userId, type: 'song' }),
-            Library.countDocuments({ userId, type: 'album' }),
-            RecentlyPlayed.countDocuments({ userId })
+        // Get stats in parallel using Prisma
+        const [playlistCount, library, recentlyPlayedCount] = await Promise.all([
+            prisma.playlist.count({ where: { userId } }),
+            prisma.library.findUnique({
+                where: { userId },
+                select: {
+                    likedSongIds: true,
+                    likedAlbumIds: true
+                }
+            }),
+            prisma.recentlyPlayed.count({ where: { userId } })
         ]);
 
         res.json({
             success: true,
             stats: {
                 playlists: playlistCount,
-                likedSongs: likedSongsCount,
-                likedAlbums: likedAlbumsCount,
+                likedSongs: library?.likedSongIds.length || 0,
+                likedAlbums: library?.likedAlbumIds.length || 0,
                 recentlyPlayed: recentlyPlayedCount,
                 totalListeningTime: 0 // Can be calculated from RecentlyPlayed if needed
             }
@@ -339,7 +361,9 @@ export const deleteAccount = async (req, res) => {
         }
 
         // Get user with password
-        const user = await User.findById(req.userId).select('+password');
+        const user = await prisma.user.findUnique({
+            where: { id: req.userId }
+        });
 
         if (!user) {
             return res.status(404).json({
@@ -368,8 +392,10 @@ export const deleteAccount = async (req, res) => {
             }
         }
 
-        // Delete user
-        await User.findByIdAndDelete(req.userId);
+        // Delete user (cascade will delete related records)
+        await prisma.user.delete({
+            where: { id: req.userId }
+        });
 
         res.json({
             success: true,
@@ -390,9 +416,19 @@ export const deleteAccount = async (req, res) => {
 /* GET ALL USERS (ADMIN) */
 export const getAllUsers = async (req, res) => {
     try {
-        const users = await User.find({})
-            .select("-password -refreshToken -otp -otpExpiry")
-            .sort({ createdAt: -1 });
+        const users = await prisma.user.findMany({
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                avatar: true,
+                bio: true,
+                isEmailVerified: true,
+                createdAt: true,
+                updatedAt: true
+            },
+            orderBy: { createdAt: 'desc' }
+        });
 
         res.json({
             success: true,
@@ -413,7 +449,10 @@ export const deleteUser = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const user = await User.findById(id);
+        const user = await prisma.user.findUnique({
+            where: { id },
+            select: { avatar: true }
+        });
 
         if (!user) {
             return res.status(404).json({
@@ -432,7 +471,7 @@ export const deleteUser = async (req, res) => {
             }
         }
 
-        await User.findByIdAndDelete(id);
+        await prisma.user.delete({ where: { id } });
 
         res.json({
             success: true,
