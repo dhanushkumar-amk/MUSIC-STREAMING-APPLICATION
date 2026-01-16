@@ -22,6 +22,8 @@ import { SessionProvider } from "./context/SessionContext"
 import CommandPalette from "./components/CommandPalette"
 import SessionPage from "./pages/SessionPage"
 import AllSongsPage from "./pages/AllSongsPage"
+import ArtistPage from "./pages/ArtistPage"
+import ArtistsPage from "./pages/ArtistsPage"
 
 const App = () => {
   return (
@@ -45,6 +47,8 @@ const App = () => {
                   <Route path="/albums" element={<AlbumsPage />} />
                   <Route path="/playlists" element={<PlaylistsPage />} />
                   <Route path="/playlist/:playlistId" element={<PlaylistDetailPage />} />
+                  <Route path="/artists" element={<ArtistsPage />} />
+                  <Route path="/artist/:id" element={<ArtistPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/collection" element={<LibraryPage />} />

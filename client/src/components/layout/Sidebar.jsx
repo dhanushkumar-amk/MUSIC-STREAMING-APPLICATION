@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Search, Library, Plus, Heart, Disc, ListMusic, User, Music } from "lucide-react";
+import { Home, Search, Library, Plus, Heart, Disc, ListMusic, User, Music, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -14,6 +14,7 @@ const sidebarItems = [
   { icon: Music, label: "All Songs", href: "/songs" },
   { icon: Disc, label: "Albums", href: "/albums" },
   { icon: ListMusic, label: "Playlists", href: "/playlists" },
+  { icon: Users, label: "Artists", href: "/artists" },
   { icon: User, label: "Profile", href: "/profile" },
 ];
 
