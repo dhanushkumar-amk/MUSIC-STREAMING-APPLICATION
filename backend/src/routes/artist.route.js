@@ -1,5 +1,8 @@
 import express from "express";
 import multer from "multer";
+import validate from "../middleware/validate.middleware.js";
+import { artistSchemas } from "../validators/misc.validator.js";
+
 import {
   createArtist,
   getAllArtists,
@@ -30,19 +33,19 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 /* PUBLIC ROUTES */
-router.get("/list", getAllArtists);
+router.get("/list", validate(artistSchemas.getAllArtists), getAllArtists);
 router.get("/top", getTopArtists);
 router.get("/featured", getFeaturedArtists);
-router.get("/search", searchArtists);
-router.get("/genre/:genre", getArtistsByGenre);
-router.get("/:id", getArtistById);
-router.get("/:id/similar", getSimilarArtists);
+router.get("/search", validate(artistSchemas.searchArtists), searchArtists);
+router.get("/genre/:genre", validate(artistSchemas.getArtistsByGenre), getArtistsByGenre);
+router.get("/:id", validate(artistSchemas.getArtistById), getArtistById);
+router.get("/:id/similar", validate(artistSchemas.getSimilarArtists), getSimilarArtists);
 
 /* PROTECTED ROUTES - USER */
 router.use(authMiddleware);
 
-router.post("/:id/follow", followArtist);
-router.post("/:id/unfollow", unfollowArtist);
+router.post("/:id/follow", validate(artistSchemas.followArtist), followArtist);
+router.post("/:id/unfollow", validate(artistSchemas.unfollowArtist), unfollowArtist);
 router.get("/me/following", getFollowedArtists);
 
 /* ADMIN ROUTES - Artist Management */
@@ -52,6 +55,7 @@ router.post(
     { name: "avatar", maxCount: 1 },
     { name: "coverImage", maxCount: 1 }
   ]),
+  validate(artistSchemas.createArtist),
   createArtist
 );
 
@@ -61,10 +65,11 @@ router.patch(
     { name: "avatar", maxCount: 1 },
     { name: "coverImage", maxCount: 1 }
   ]),
+  validate(artistSchemas.updateArtist),
   updateArtist
 );
 
-router.delete("/:id", deleteArtist);
+router.delete("/:id", validate(artistSchemas.deleteArtist), deleteArtist);
 router.get("/:id/stats", getArtistStats);
 
 export default router;
