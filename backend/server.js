@@ -7,7 +7,6 @@ import "dotenv/config";
 
 import connectCloudinary from "./src/config/cloudinary.js";
 import connectDB from "./src/config/mongodb.js";
-import prisma from "./src/config/database.js";
 
 import register from "./src/config/prometheus.js";
 
@@ -63,16 +62,8 @@ app.use(globalLimiter);
 /* INIT SERVICES */
 connectCloudinary();
 
-// Connect to MongoDB (for songs & albums)
+// Connect to MongoDB
 connectDB();
-
-// Connect to PostgreSQL via Prisma (for migrated features)
-prisma.$connect()
-  .then(() => console.log('✅ PostgreSQL (Neon) connected via Prisma'))
-  .catch((err) => {
-    console.error('❌ PostgreSQL connection error:', err);
-    process.exit(1);
-  });
 
 /* CREATE SEARCH INDEXES */
 createIndexes();
@@ -93,7 +84,7 @@ import statsRouter from "./src/routes/stats.route.js";
 import userSettingsRouter from "./src/routes/userSettings.route.js";
 import lyricsRouter from "./src/routes/lyrics.route.js";
 import sessionRouter from "./src/routes/session.route.js";
-
+import artistRouter from "./src/routes/artist.route.js";
 
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
@@ -109,6 +100,7 @@ app.use("/api/stats", statsRouter);
 app.use("/api/settings", userSettingsRouter);
 app.use("/api/lyrics", lyricsRouter);
 app.use("/api/session", sessionRouter);
+app.use("/api/artist", artistRouter);
 
 
 

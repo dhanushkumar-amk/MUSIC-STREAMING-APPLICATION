@@ -2,6 +2,7 @@ import { meili } from "../config/meili.js";
 import Song from "../models/songModel.js";
 import Album from "../models/albumModel.js";
 import User from "../models/user.model.js";
+import Artist from "../models/artist.model.js";
 import RecentSearch from "../models/recentSearch.model.js";
 import redis from "../config/redis.js";
 
@@ -15,6 +16,7 @@ export const globalSearch = async (req, res) => {
         results: {
           songs: [],
           albums: [],
+          artists: [],
           users: []
         }
       });
@@ -22,9 +24,10 @@ export const globalSearch = async (req, res) => {
 
     try {
       // Try MeiliSearch first
-      const [songs, albums, users] = await Promise.all([
+      const [songs, albums, artists, users] = await Promise.all([
         meili.index("songs").search(q, { limit: 10 }),
         meili.index("albums").search(q, { limit: 10 }),
+        meili.index("artists").search(q, { limit: 10 }),
         meili.index("users").search(q, { limit: 10 })
       ]);
 
@@ -33,6 +36,7 @@ export const globalSearch = async (req, res) => {
         results: {
           songs: songs.hits,
           albums: albums.hits,
+          artists: artists.hits,
           users: users.hits
         }
       });
@@ -42,21 +46,28 @@ export const globalSearch = async (req, res) => {
 
       const searchRegex = new RegExp(q, 'i');
 
-      const [songs, albums, users] = await Promise.all([
+      const [songs, albums, artists, users] = await Promise.all([
         Song.find({
           $or: [
             { name: searchRegex },
-            { artist: searchRegex },
             { desc: searchRegex }
           ]
-        }).limit(10).select('_id name desc artist image file duration'),
+        }).limit(10).select('_id name desc artist image file duration').populate('artist', 'name avatar verified'),
 
         Album.find({
           $or: [
             { name: searchRegex },
             { desc: searchRegex }
           ]
-        }).limit(10).select('_id name desc image bgColour'),
+        }).limit(10).select('_id name desc image bgColour artist').populate('artist', 'name avatar verified'),
+
+        Artist.find({
+          $or: [
+            { name: searchRegex },
+            { bio: searchRegex }
+          ],
+          isActive: true
+        }).limit(10).select('_id name avatar verified followerCount genres'),
 
         User.find({
           email: searchRegex
@@ -81,7 +92,16 @@ export const globalSearch = async (req, res) => {
             name: a.name,
             desc: a.desc,
             image: a.image,
-            bgColour: a.bgColour
+            bgColour: a.bgColour,
+            artist: a.artist
+          })),
+          artists: artists.map(artist => ({
+            id: artist._id.toString(),
+            name: artist.name,
+            avatar: artist.avatar,
+            verified: artist.verified,
+            followerCount: artist.followerCount,
+            genres: artist.genres
           })),
           users: users.map(u => ({
             id: u._id.toString(),
@@ -108,6 +128,7 @@ export const autocompleteSearch = async (req, res) => {
         suggestions: {
           songs: [],
           albums: [],
+          artists: [],
           users: []
         }
       });
@@ -115,9 +136,10 @@ export const autocompleteSearch = async (req, res) => {
 
     try {
       // Try MeiliSearch first
-      const [songs, albums, users] = await Promise.all([
+      const [songs, albums, artists, users] = await Promise.all([
         meili.index("songs").search(q, { limit: 5 }),
         meili.index("albums").search(q, { limit: 5 }),
+        meili.index("artists").search(q, { limit: 5 }),
         meili.index("users").search(q, { limit: 5 })
       ]);
 
@@ -126,6 +148,7 @@ export const autocompleteSearch = async (req, res) => {
         suggestions: {
           songs: songs.hits,
           albums: albums.hits,
+          artists: artists.hits,
           users: users.hits
         }
       });

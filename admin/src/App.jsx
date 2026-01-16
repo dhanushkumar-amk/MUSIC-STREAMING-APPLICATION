@@ -10,6 +10,8 @@ import AddAlbum from './pages/AddAlbum/AddAlbum';
 import ListAlbum from './pages/ListAlbum/ListAlbum';
 import UserManagement from './pages/UserManagement/UserManagement';
 import AdminLogin from './pages/AdminLogin/AdminLogin';
+import AddArtist from './pages/AddArtist/AddArtist';
+import ListArtist from './pages/ListArtist/ListArtist';
 import Sidebar from './components/Sidebar/Sidebar';
 import Navbar from './components/Navbar/Navbar';
 
@@ -60,6 +62,8 @@ const App = () => {
                       <Route path="/list-songs" element={<ListSong />} />
                       <Route path="/add-album" element={<AddAlbum />} />
                       <Route path="/list-albums" element={<ListAlbum />} />
+                      <Route path="/add-artist" element={<AddArtist />} />
+                      <Route path="/list-artist" element={<ListArtist />} />
                       <Route path="/users" element={<UserManagement />} />
                     </Routes>
                   </div>

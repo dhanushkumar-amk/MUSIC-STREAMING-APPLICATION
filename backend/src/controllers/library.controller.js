@@ -1,4 +1,4 @@
-import prisma from "../config/database.js";
+import Library from "../models/library.model.js";
 import songModel from "../models/songModel.js";
 import albumModel from "../models/albumModel.js";
 import redis from "../config/redis.js";   // caching layer
@@ -7,14 +7,12 @@ import redis from "../config/redis.js";   // caching layer
    INIT USER LIBRARY IF NOT EXISTS
 ----------------------------------------*/
 const ensureLibrary = async userId => {
-  let lib = await prisma.library.findUnique({ where: { userId } });
+  let lib = await Library.findOne({ userId });
   if (!lib) {
-    lib = await prisma.library.create({
-      data: {
-        userId,
-        likedSongIds: [],
-        likedAlbumIds: []
-      }
+    lib = await Library.create({
+      userId,
+      likedSongs: [],
+      likedAlbums: []
     });
   }
   return lib;
@@ -56,15 +54,11 @@ export const likeSong = async (req, res) => {
 
     const lib = await ensureLibrary(req.userId);
 
-    if (!lib.likedSongIds.includes(songId)) {
-      await prisma.library.update({
-        where: { userId: req.userId },
-        data: {
-          likedSongIds: {
-            push: songId
-          }
-        }
-      });
+    if (!lib.likedSongs.includes(songId)) {
+      await Library.findOneAndUpdate(
+        { userId: req.userId },
+        { $addToSet: { likedSongs: songId } }
+      );
       await invalidateSongCache(req.userId);
     }
 
@@ -82,16 +76,10 @@ export const unlikeSong = async (req, res) => {
   try {
     const { songId } = req.body;
 
-    const lib = await ensureLibrary(req.userId);
-
-    const updatedSongIds = lib.likedSongIds.filter(id => id !== songId);
-
-    await prisma.library.update({
-      where: { userId: req.userId },
-      data: {
-        likedSongIds: updatedSongIds
-      }
-    });
+    await Library.findOneAndUpdate(
+      { userId: req.userId },
+      { $pull: { likedSongs: songId } }
+    );
 
     await invalidateSongCache(req.userId);
 
@@ -124,7 +112,7 @@ export const getLikedSongs = async (req, res) => {
     const lib = await ensureLibrary(req.userId);
 
     const songs = await songModel.find({
-      _id: { $in: lib.likedSongIds }
+      _id: { $in: lib.likedSongs }
     });
 
     // Try to cache only if Redis is available
@@ -156,15 +144,11 @@ export const likeAlbum = async (req, res) => {
 
     const lib = await ensureLibrary(req.userId);
 
-    if (!lib.likedAlbumIds.includes(albumId)) {
-      await prisma.library.update({
-        where: { userId: req.userId },
-        data: {
-          likedAlbumIds: {
-            push: albumId
-          }
-        }
-      });
+    if (!lib.likedAlbums.includes(albumId)) {
+      await Library.findOneAndUpdate(
+        { userId: req.userId },
+        { $addToSet: { likedAlbums: albumId } }
+      );
       await invalidateAlbumCache(req.userId);
     }
 
@@ -182,16 +166,10 @@ export const unlikeAlbum = async (req, res) => {
   try {
     const { albumId } = req.body;
 
-    const lib = await ensureLibrary(req.userId);
-
-    const updatedAlbumIds = lib.likedAlbumIds.filter(id => id !== albumId);
-
-    await prisma.library.update({
-      where: { userId: req.userId },
-      data: {
-        likedAlbumIds: updatedAlbumIds
-      }
-    });
+    await Library.findOneAndUpdate(
+      { userId: req.userId },
+      { $pull: { likedAlbums: albumId } }
+    );
 
     await invalidateAlbumCache(req.userId);
 
@@ -224,7 +202,7 @@ export const getLikedAlbums = async (req, res) => {
     const lib = await ensureLibrary(req.userId);
 
     const albums = await albumModel.find({
-      _id: { $in: lib.likedAlbumIds }
+      _id: { $in: lib.likedAlbums }
     });
 
     // Try to cache only if Redis is available

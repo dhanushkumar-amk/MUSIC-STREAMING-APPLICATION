@@ -1,5 +1,6 @@
-import prisma from "../config/database.js";
+import Playlist from "../models/playlist.model.js";
 import Song from "../models/songModel.js";
+import User from "../models/user.model.js";
 import redis from "../config/redis.js";
 import { safeRedisGet, safeRedisSet, safeRedisDel } from "../utils/redisHelpers.js";
 
@@ -13,14 +14,12 @@ export const createPlaylist = async (req, res) => {
       return res.status(400).json({ success: false, message: "Playlist name is required" });
     }
 
-    const playlist = await prisma.playlist.create({
-      data: {
-        name: name.trim(),
-        desc: desc.trim(),
-        userId,
-        isPublic,
-        songIds: []
-      }
+    const playlist = await Playlist.create({
+      name: name.trim(),
+      desc: desc.trim(),
+      userId,
+      isPublic,
+      songs: []
     });
 
     // Invalidate cache
@@ -46,15 +45,12 @@ export const getPlaylists = async (req, res) => {
       return res.json({ success: true, playlists: cached, cached: true });
     }
 
-    const playlists = await prisma.playlist.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' }
-    });
+    const playlists = await Playlist.find({ userId }).sort({ createdAt: -1 }).lean();
 
     // Populate songs for each playlist
     const playlistsWithSongs = await Promise.all(
       playlists.map(async (playlist) => {
-        const songs = await Song.find({ _id: { $in: playlist.songIds } });
+        const songs = await Song.find({ _id: { $in: playlist.songs } });
         return { ...playlist, songs };
       })
     );
@@ -76,33 +72,18 @@ export const getPlaylist = async (req, res) => {
     const { playlistId } = req.params;
     const userId = req.userId;
 
-    const playlist = await prisma.playlist.findUnique({
-      where: { id: playlistId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            avatar: true
-          }
-        },
-        collaborators: {
-          select: {
-            id: true,
-            email: true,
-            avatar: true
-          }
-        }
-      }
-    });
+    const playlist = await Playlist.findById(playlistId)
+      .populate('userId', 'email avatar')
+      .populate('collaborators', 'email avatar')
+      .lean();
 
     if (!playlist) {
       return res.status(404).json({ success: false, message: "Playlist not found" });
     }
 
     // Check access rights
-    const isOwner = playlist.userId === userId;
-    const isCollaborator = playlist.collaborators.some(c => c.id === userId);
+    const isOwner = playlist.userId._id.toString() === userId;
+    const isCollaborator = playlist.collaborators.some(c => c._id.toString() === userId);
     const canAccess = isOwner || isCollaborator || playlist.isPublic;
 
     if (!canAccess) {
@@ -110,7 +91,7 @@ export const getPlaylist = async (req, res) => {
     }
 
     // Populate songs
-    const songs = await Song.find({ _id: { $in: playlist.songIds } });
+    const songs = await Song.find({ _id: { $in: playlist.songs } });
     const playlistWithSongs = { ...playlist, songs };
 
     res.json({ success: true, playlist: playlistWithSongs, isOwner, isCollaborator });
@@ -133,25 +114,19 @@ export const updatePlaylist = async (req, res) => {
     if (isPublic !== undefined) updateData.isPublic = isPublic;
     if (banner !== undefined) updateData.banner = banner;
 
-    const playlist = await prisma.playlist.updateMany({
-      where: {
-        id: playlistId,
-        userId
-      },
-      data: updateData
-    });
+    const playlist = await Playlist.findOneAndUpdate(
+      { _id: playlistId, userId },
+      updateData,
+      { new: true }
+    );
 
-    if (playlist.count === 0) {
+    if (!playlist) {
       return res.status(404).json({ success: false, message: "Playlist not found" });
     }
 
-    // Fetch updated playlist with songs
-    const updatedPlaylist = await prisma.playlist.findUnique({
-      where: { id: playlistId }
-    });
-
-    const songs = await Song.find({ _id: { $in: updatedPlaylist.songIds } });
-    const playlistWithSongs = { ...updatedPlaylist, songs };
+    // Fetch songs
+    const songs = await Song.find({ _id: { $in: playlist.songs } });
+    const playlistWithSongs = { ...playlist.toObject(), songs };
 
     // Invalidate cache
     await redis.del(`playlists:${userId}`);
@@ -174,12 +149,7 @@ export const addSongToPlaylist = async (req, res) => {
     const { playlistId, songId } = req.body;
     const userId = req.userId;
 
-    const playlist = await prisma.playlist.findFirst({
-      where: {
-        id: playlistId,
-        userId
-      }
-    });
+    const playlist = await Playlist.findOne({ _id: playlistId, userId });
 
     if (!playlist) {
       return res.status(404).json({ success: false, message: "Playlist not found" });
@@ -191,18 +161,15 @@ export const addSongToPlaylist = async (req, res) => {
       return res.status(404).json({ success: false, message: "Song not found" });
     }
 
-    if (playlist.songIds.includes(songId)) {
+    if (playlist.songs.includes(songId)) {
       return res.status(400).json({ success: false, message: "Song already in playlist" });
     }
 
-    const updatedPlaylist = await prisma.playlist.update({
-      where: { id: playlistId },
-      data: {
-        songIds: {
-          push: songId
-        }
-      }
+    await Playlist.findByIdAndUpdate(playlistId, {
+      $addToSet: { songs: songId }
     });
+
+    const updatedPlaylist = await Playlist.findById(playlistId);
 
     // Invalidate cache
     await redis.del(`playlists:${userId}`);
@@ -221,25 +188,17 @@ export const removeSongFromPlaylist = async (req, res) => {
     const { playlistId, songId } = req.body;
     const userId = req.userId;
 
-    const playlist = await prisma.playlist.findFirst({
-      where: {
-        id: playlistId,
-        userId
-      }
-    });
+    const playlist = await Playlist.findOne({ _id: playlistId, userId });
 
     if (!playlist) {
       return res.status(404).json({ success: false, message: "Playlist not found" });
     }
 
-    const updatedSongIds = playlist.songIds.filter(id => id !== songId);
-
-    const updatedPlaylist = await prisma.playlist.update({
-      where: { id: playlistId },
-      data: {
-        songIds: updatedSongIds
-      }
+    await Playlist.findByIdAndUpdate(playlistId, {
+      $pull: { songs: songId }
     });
+
+    const updatedPlaylist = await Playlist.findById(playlistId);
 
     // Invalidate cache
     await redis.del(`playlists:${userId}`);
@@ -258,12 +217,7 @@ export const reorderPlaylistSongs = async (req, res) => {
     const { playlistId, songIds } = req.body;
     const userId = req.userId;
 
-    const playlist = await prisma.playlist.findFirst({
-      where: {
-        id: playlistId,
-        userId
-      }
-    });
+    const playlist = await Playlist.findOne({ _id: playlistId, userId });
 
     if (!playlist) {
       return res.status(404).json({ success: false, message: "Playlist not found" });
@@ -271,15 +225,14 @@ export const reorderPlaylistSongs = async (req, res) => {
 
     // Validate all song IDs exist in playlist
     const validIds = songIds.filter(id =>
-      playlist.songIds.includes(id)
+      playlist.songs.some(s => s.toString() === id)
     );
 
-    const updatedPlaylist = await prisma.playlist.update({
-      where: { id: playlistId },
-      data: {
-        songIds: validIds
-      }
+    await Playlist.findByIdAndUpdate(playlistId, {
+      songs: validIds
     });
+
+    const updatedPlaylist = await Playlist.findById(playlistId);
 
     // Invalidate cache
     await redis.del(`playlists:${userId}`);
@@ -298,14 +251,9 @@ export const deletePlaylist = async (req, res) => {
     const { playlistId } = req.body;
     const userId = req.userId;
 
-    const playlist = await prisma.playlist.deleteMany({
-      where: {
-        id: playlistId,
-        userId
-      }
-    });
+    const result = await Playlist.deleteOne({ _id: playlistId, userId });
 
-    if (playlist.count === 0) {
+    if (result.deletedCount === 0) {
       return res.status(404).json({ success: false, message: "Playlist not found" });
     }
 
@@ -325,31 +273,22 @@ export const toggleCollaborative = async (req, res) => {
     const { playlistId } = req.body;
     const userId = req.userId;
 
-    const playlist = await prisma.playlist.findFirst({
-      where: {
-        id: playlistId,
-        userId
-      }
-    });
+    const playlist = await Playlist.findOne({ _id: playlistId, userId });
 
     if (!playlist) {
       return res.status(404).json({ success: false, message: "Playlist not found" });
     }
 
-    const updatedPlaylist = await prisma.playlist.update({
-      where: { id: playlistId },
-      data: {
-        collaborative: !playlist.collaborative
-      }
-    });
+    playlist.collaborative = !playlist.collaborative;
+    await playlist.save();
 
     // Invalidate cache
     await redis.del(`playlists:${userId}`);
 
     res.json({
       success: true,
-      collaborative: updatedPlaylist.collaborative,
-      message: `Playlist is now ${updatedPlaylist.collaborative ? 'collaborative' : 'private'}`
+      collaborative: playlist.collaborative,
+      message: `Playlist is now ${playlist.collaborative ? 'collaborative' : 'private'}`
     });
 
   } catch (error) {
@@ -364,15 +303,8 @@ export const addCollaborator = async (req, res) => {
     const { playlistId, collaboratorId } = req.body;
     const userId = req.userId;
 
-    const playlist = await prisma.playlist.findFirst({
-      where: {
-        id: playlistId,
-        userId
-      },
-      include: {
-        collaborators: true
-      }
-    });
+    const playlist = await Playlist.findOne({ _id: playlistId, userId })
+      .populate('collaborators');
 
     if (!playlist) {
       return res.status(404).json({ success: false, message: "Playlist not found" });
@@ -382,21 +314,15 @@ export const addCollaborator = async (req, res) => {
       return res.status(400).json({ success: false, message: "Playlist is not collaborative" });
     }
 
-    if (playlist.collaborators.some(c => c.id === collaboratorId)) {
+    if (playlist.collaborators.some(c => c._id.toString() === collaboratorId)) {
       return res.status(400).json({ success: false, message: "User is already a collaborator" });
     }
 
-    const updatedPlaylist = await prisma.playlist.update({
-      where: { id: playlistId },
-      data: {
-        collaborators: {
-          connect: { id: collaboratorId }
-        }
-      },
-      include: {
-        collaborators: true
-      }
+    await Playlist.findByIdAndUpdate(playlistId, {
+      $addToSet: { collaborators: collaboratorId }
     });
+
+    const updatedPlaylist = await Playlist.findById(playlistId).populate('collaborators');
 
     // Invalidate cache
     await redis.del(`playlists:${userId}`);
@@ -415,28 +341,17 @@ export const removeCollaborator = async (req, res) => {
     const { playlistId, collaboratorId } = req.body;
     const userId = req.userId;
 
-    const playlist = await prisma.playlist.findFirst({
-      where: {
-        id: playlistId,
-        userId
-      }
-    });
+    const playlist = await Playlist.findOne({ _id: playlistId, userId });
 
     if (!playlist) {
       return res.status(404).json({ success: false, message: "Playlist not found" });
     }
 
-    const updatedPlaylist = await prisma.playlist.update({
-      where: { id: playlistId },
-      data: {
-        collaborators: {
-          disconnect: { id: collaboratorId }
-        }
-      },
-      include: {
-        collaborators: true
-      }
+    await Playlist.findByIdAndUpdate(playlistId, {
+      $pull: { collaborators: collaboratorId }
     });
+
+    const updatedPlaylist = await Playlist.findById(playlistId).populate('collaborators');
 
     // Invalidate cache
     await redis.del(`playlists:${userId}`);

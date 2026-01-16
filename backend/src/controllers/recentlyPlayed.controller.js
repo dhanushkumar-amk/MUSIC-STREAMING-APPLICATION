@@ -1,4 +1,5 @@
-import prisma from "../config/database.js";
+import RecentlyPlayed from "../models/recentlyPlayed.model.js";
+import Recommendation from "../models/recommendation.model.js";
 import songModel from "../models/songModel.js";
 import redis from "../config/redis.js";
 
@@ -15,19 +16,17 @@ export const trackStart = async (req, res) => {
     if (!song) return res.status(404).json({ message: "Song not found" });
 
     // Create a new playback session entry
-    const entry = await prisma.recentlyPlayed.create({
-      data: {
-        userId,
-        songId,
-        contextType,
-        contextId
-      }
+    const entry = await RecentlyPlayed.create({
+      userId,
+      songId,
+      contextType,
+      contextId
     });
 
     // Invalidate user cache
     await redis.del(`recent:${userId}`);
 
-    return res.json({ success: true, entryId: entry.id });
+    return res.json({ success: true, entryId: entry._id });
   } catch (err) {
     console.error("trackStart error:", err);
     res.status(500).json({ message: "Failed to start play session" });
@@ -42,55 +41,43 @@ export const trackEnd = async (req, res) => {
     const { entryId, playDuration = 0, skipped = false } = req.body;
     const userId = req.userId;
 
-    const entry = await prisma.recentlyPlayed.findUnique({
-      where: { id: entryId }
-    });
+    const entry = await RecentlyPlayed.findById(entryId);
 
     if (!entry)
       return res.status(404).json({ message: "Entry not found" });
 
-    if (entry.userId !== userId) {
+    if (entry.userId.toString() !== userId) {
       return res.status(403).json({ message: "Not allowed" });
     }
 
     // 1. Update session
-    await prisma.recentlyPlayed.update({
-      where: { id: entryId },
-      data: {
-        playDuration,
-        skipped
-      }
+    await RecentlyPlayed.findByIdAndUpdate(entryId, {
+      playDuration,
+      skipped
     });
 
     // 2. Invalidate cache
     await redis.del(`recent:${userId}`);
 
-    // 3. UPDATE RECOMMENDATION TABLE (use upsert to avoid duplicate key error)
-    const rec = await prisma.recommendation.upsert({
-      where: { songId: entry.songId },
-      update: {
-        globalSkipCount: {
-          increment: skipped ? 1 : 0
-        },
-        globalPlayCount: {
-          increment: skipped ? 0 : 1
+    // 3. UPDATE RECOMMENDATION TABLE (use findOneAndUpdate with upsert)
+    const rec = await Recommendation.findOneAndUpdate(
+      { songId: entry.songId },
+      {
+        $inc: {
+          globalSkipCount: skipped ? 1 : 0,
+          globalPlayCount: skipped ? 0 : 1
         }
       },
-      create: {
-        songId: entry.songId,
-        globalSkipCount: skipped ? 1 : 0,
-        globalPlayCount: skipped ? 0 : 1,
-        weightedScore: 0
-      }
-    });
+      { upsert: true, new: true }
+    );
 
     // Weighted score (you can adjust formula later)
     const weightedScore = rec.globalPlayCount - rec.globalSkipCount * 0.5;
 
-    await prisma.recommendation.update({
-      where: { songId: entry.songId },
-      data: { weightedScore }
-    });
+    await Recommendation.findOneAndUpdate(
+      { songId: entry.songId },
+      { weightedScore }
+    );
 
     return res.json({ success: true, message: "Session ended" });
   } catch (err) {
@@ -118,11 +105,9 @@ export const getRecentlyPlayed = async (req, res) => {
     }
 
     // 2. DB Lookup (latest 30)
-    const recentPlays = await prisma.recentlyPlayed.findMany({
-      where: { userId },
-      orderBy: { playedAt: 'desc' },
-      take: 30
-    });
+    const recentPlays = await RecentlyPlayed.find({ userId })
+      .sort({ playedAt: -1 })
+      .limit(30);
 
     // Populate songs from MongoDB
     const formatted = await Promise.all(
@@ -133,7 +118,7 @@ export const getRecentlyPlayed = async (req, res) => {
         if (!song) return null;
 
         return {
-          id: item.id,
+          id: item._id,
           playedAt: item.playedAt,
           item: {
             _id: song._id,

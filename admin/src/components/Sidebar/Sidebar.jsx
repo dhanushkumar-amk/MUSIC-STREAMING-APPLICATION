@@ -84,6 +84,28 @@ const Sidebar = () => {
                     </NavLink>
 
                     <NavLink
+                        to='/add-artist'
+                        onClick={closeSidebar}
+                        className="flex items-center gap-2.5 text-gray-800 bg-white border border-black p-3 rounded-lg drop-shadow-[-4px_4px_#00FF5B] text-sm font-medium hover:scale-105 transition-transform active:scale-95"
+                    >
+                        <svg className='w-5' fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+                        </svg>
+                        <p>Add Artist</p>
+                    </NavLink>
+
+                    <NavLink
+                        to='/list-artist'
+                        onClick={closeSidebar}
+                        className="flex items-center gap-2.5 text-gray-800 bg-white border border-black p-3 rounded-lg drop-shadow-[-4px_4px_#00FF5B] text-sm font-medium hover:scale-105 transition-transform active:scale-95"
+                    >
+                        <svg className='w-5' fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                        </svg>
+                        <p>List Artists</p>
+                    </NavLink>
+
+                    <NavLink
                         to='/users'
                         onClick={closeSidebar}
                         className="flex items-center gap-2.5 text-gray-800 bg-white border border-black p-3 rounded-lg drop-shadow-[-4px_4px_#00FF5B] text-sm font-medium hover:scale-105 transition-transform active:scale-95"
