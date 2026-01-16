@@ -1,4 +1,7 @@
 import express from "express";
+import validate from "../middleware/validate.middleware.js";
+import { userSettingsSchemas } from "../validators/misc.validator.js";
+
 import {
   getUserSettings,
   updateAudioQuality,
@@ -23,13 +26,13 @@ router.use(authMiddleware);
 router.get("/", getUserSettings);
 
 // Update all settings
-router.put("/", updateAllSettings);
+router.put("/", validate(userSettingsSchemas.updateAllSettings), updateAllSettings);
 
 // Audio quality
-router.patch("/audio-quality", updateAudioQuality);
+router.patch("/audio-quality", validate(userSettingsSchemas.updateAudioQuality), updateAudioQuality);
 
 // Crossfade
-router.patch("/crossfade", updateCrossfade);
+router.patch("/crossfade", validate(userSettingsSchemas.updateCrossfade), updateCrossfade);
 
 // Gapless playback
 router.patch("/gapless", toggleGapless);
@@ -38,12 +41,12 @@ router.patch("/gapless", toggleGapless);
 router.patch("/normalize", toggleNormalize);
 
 // Playback speed
-router.patch("/playback-speed", updatePlaybackSpeed);
+router.patch("/playback-speed", validate(userSettingsSchemas.updatePlaybackSpeed), updatePlaybackSpeed);
 
 // Equalizer
 router.patch("/equalizer/toggle", toggleEqualizer);
-router.patch("/equalizer/preset", updateEqualizerPreset);
-router.patch("/equalizer/bands", updateEqualizerBands);
+router.patch("/equalizer/preset", validate(userSettingsSchemas.updateEqualizerPreset), updateEqualizerPreset);
+router.patch("/equalizer/bands", validate(userSettingsSchemas.updateEqualizerBands), updateEqualizerBands);
 router.get("/equalizer/presets", getEqualizerPresets);
 
 export default router;

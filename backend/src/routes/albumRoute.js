@@ -1,5 +1,7 @@
 import express from "express";
 import upload from "../middleware/multer.js";
+import validate from "../middleware/validate.middleware.js";
+import { albumSchemas } from "../validators/media.validator.js";
 
 import {
   addAlbum,
@@ -12,11 +14,12 @@ const albumRouter = express.Router();
 albumRouter.post(
   "/add",
   upload.single("image"),
+  validate(albumSchemas.addAlbum),
   addAlbum
 );
 
-albumRouter.get("/list", listAlbum);
+albumRouter.get("/list", validate(albumSchemas.listAlbum), listAlbum);
 
-albumRouter.post("/remove", removeAlbum);
+albumRouter.post("/remove", validate(albumSchemas.removeAlbum), removeAlbum);
 
 export default albumRouter;

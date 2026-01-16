@@ -1,5 +1,8 @@
 import express from "express";
 import authMiddleware from "../middleware/auth.middleware.js";
+import validate from "../middleware/validate.middleware.js";
+import { recentlyPlayedSchemas } from "../validators/misc.validator.js";
+
 import {
   trackStart,
   trackEnd,
@@ -15,6 +18,6 @@ router.post("/start", authMiddleware, trackStart);
 router.post("/end", authMiddleware, trackEnd);
 
 // LIST recently played
-router.get("/list", authMiddleware, getRecentlyPlayed);
+router.get("/list", authMiddleware, validate(recentlyPlayedSchemas.getRecentlyPlayed), getRecentlyPlayed);
 
 export default router;
