@@ -1,6 +1,23 @@
-import Session from '../models/session.model.js';
-import ChatMessage from '../models/chatMessage.model.js';
+import prisma from '../config/database.js';
 import Song from '../models/songModel.js';
+
+// Helper function to generate unique session code
+async function generateSessionCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code;
+  let exists = true;
+
+  while (exists) {
+    code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const session = await prisma.session.findUnique({ where: { sessionCode: code } });
+    exists = !!session;
+  }
+
+  return code;
+}
 
 // Create new session
 export const createSession = async (req, res) => {
@@ -9,25 +26,34 @@ export const createSession = async (req, res) => {
     const userId = req.userId;
 
     // Generate unique session code
-    const sessionCode = await Session.generateSessionCode();
+    const sessionCode = await generateSessionCode();
 
-    const session = await Session.create({
-      sessionCode,
-      name: name || 'Listening Party',
-      hostId: userId,
-      privacy: privacy || 'private',
-      participants: [{
-        userId,
-        permissions: {
-          canControl: true,
-          canAddToQueue: true
+    const session = await prisma.session.create({
+      data: {
+        sessionCode,
+        name: name || 'Listening Party',
+        hostId: userId,
+        privacy: privacy || 'private',
+        allowGuestControl: settings?.allowGuestControl ?? true,
+        allowQueueAdd: settings?.allowQueueAdd ?? true,
+        maxParticipants: settings?.maxParticipants ?? 10,
+        participants: {
+          create: [{
+            userId,
+            canControl: true,
+            canAddToQueue: true
+          }]
         }
-      }],
-      settings: settings || {}
+      },
+      include: {
+        host: { select: { id: true, email: true, avatar: true } },
+        participants: {
+          include: {
+            user: { select: { id: true, email: true, avatar: true } }
+          }
+        }
+      }
     });
-
-    await session.populate('hostId', 'email avatar');
-    await session.populate('participants.userId', 'email avatar');
 
     res.json({
       success: true,
@@ -45,17 +71,34 @@ export const getSession = async (req, res) => {
   try {
     const { code } = req.params;
 
-    const session = await Session.findOne({ sessionCode: code, isActive: true })
-      .populate('hostId', 'email avatar')
-      .populate('participants.userId', 'email avatar')
-      .populate('currentSong')
-      .populate('queue');
+    const session = await prisma.session.findFirst({
+      where: { sessionCode: code, isActive: true },
+      include: {
+        host: { select: { id: true, email: true, avatar: true } },
+        participants: {
+          include: {
+            user: { select: { id: true, email: true, avatar: true } }
+          }
+        }
+      }
+    });
 
     if (!session) {
       return res.status(404).json({ success: false, message: 'Session not found' });
     }
 
-    res.json({ success: true, session });
+    // Populate songs from MongoDB
+    const currentSong = session.currentSongId ? await Song.findById(session.currentSongId) : null;
+    const queue = await Song.find({ _id: { $in: session.queueIds } });
+
+    res.json({
+      success: true,
+      session: {
+        ...session,
+        currentSong,
+        queue
+      }
+    });
   } catch (error) {
     console.error('Get session error:', error);
     res.status(500).json({ success: false, message: error.message });
@@ -68,68 +111,92 @@ export const joinSession = async (req, res) => {
     const { code } = req.params;
     const userId = req.userId;
 
-    const session = await Session.findOne({ sessionCode: code, isActive: true });
+    const session = await prisma.session.findFirst({
+      where: { sessionCode: code, isActive: true },
+      include: {
+        participants: true
+      }
+    });
 
     if (!session) {
       return res.status(404).json({ success: false, message: 'Session not found' });
     }
 
     // Check if already in session
-    const alreadyJoined = session.participants.some(
-      p => p.userId.toString() === userId
-    );
+    const existingParticipant = session.participants.find(p => p.userId === userId);
 
-    if (alreadyJoined) {
+    if (existingParticipant) {
       // Update online status
-      const participant = session.participants.find(
-        p => p.userId.toString() === userId
-      );
-      participant.isOnline = true;
-      await session.save();
+      await prisma.sessionParticipant.update({
+        where: { id: existingParticipant.id },
+        data: { isOnline: true }
+      });
 
-      await session.populate('hostId', 'email avatar');
-      await session.populate('participants.userId', 'email avatar');
-      await session.populate('currentSong');
-      await session.populate('queue');
+      const updatedSession = await prisma.session.findUnique({
+        where: { id: session.id },
+        include: {
+          host: { select: { id: true, email: true, avatar: true } },
+          participants: {
+            include: {
+              user: { select: { id: true, email: true, avatar: true } }
+            }
+          }
+        }
+      });
+
+      const currentSong = updatedSession.currentSongId ? await Song.findById(updatedSession.currentSongId) : null;
+      const queue = await Song.find({ _id: { $in: updatedSession.queueIds } });
 
       return res.json({
         success: true,
-        session,
+        session: { ...updatedSession, currentSong, queue },
         message: 'Rejoined session'
       });
     }
 
     // Check max participants
-    if (session.participants.length >= session.settings.maxParticipants) {
+    if (session.participants.length >= session.maxParticipants) {
       return res.status(403).json({ success: false, message: 'Session is full' });
     }
 
     // Add participant
-    session.participants.push({
-      userId,
-      permissions: {
-        canControl: session.settings.allowGuestControl,
-        canAddToQueue: session.settings.allowQueueAdd
+    await prisma.sessionParticipant.create({
+      data: {
+        sessionId: session.id,
+        userId,
+        canControl: session.allowGuestControl,
+        canAddToQueue: session.allowQueueAdd
       }
     });
 
-    await session.save();
-    await session.populate('hostId', 'email avatar');
-    await session.populate('participants.userId', 'email avatar');
-    await session.populate('currentSong');
-    await session.populate('queue');
-
     // Create system message
-    await ChatMessage.create({
-      sessionId: session._id,
-      userId,
-      message: 'joined the session',
-      type: 'system'
+    await prisma.chatMessage.create({
+      data: {
+        sessionId: session.id,
+        userId,
+        message: 'joined the session',
+        type: 'system'
+      }
     });
+
+    const updatedSession = await prisma.session.findUnique({
+      where: { id: session.id },
+      include: {
+        host: { select: { id: true, email: true, avatar: true } },
+        participants: {
+          include: {
+            user: { select: { id: true, email: true, avatar: true } }
+          }
+        }
+      }
+    });
+
+    const currentSong = updatedSession.currentSongId ? await Song.findById(updatedSession.currentSongId) : null;
+    const queue = await Song.find({ _id: { $in: updatedSession.queueIds } });
 
     res.json({
       success: true,
-      session,
+      session: { ...updatedSession, currentSong, queue },
       message: 'Joined session successfully'
     });
   } catch (error) {
@@ -144,42 +211,51 @@ export const leaveSession = async (req, res) => {
     const { code } = req.params;
     const userId = req.userId;
 
-    const session = await Session.findOne({ sessionCode: code });
+    const session = await prisma.session.findFirst({
+      where: { sessionCode: code },
+      include: { participants: true }
+    });
 
     if (!session) {
       return res.status(404).json({ success: false, message: 'Session not found' });
     }
 
-    // Mark as offline instead of removing
-    const participant = session.participants.find(
-      p => p.userId.toString() === userId
-    );
-
+    // Mark as offline
+    const participant = session.participants.find(p => p.userId === userId);
     if (participant) {
-      participant.isOnline = false;
+      await prisma.sessionParticipant.update({
+        where: { id: participant.id },
+        data: { isOnline: false }
+      });
     }
 
     // If host leaves, transfer to another participant
-    if (session.hostId.toString() === userId) {
+    if (session.hostId === userId) {
       const onlineParticipants = session.participants.filter(
-        p => p.isOnline && p.userId.toString() !== userId
+        p => p.isOnline && p.userId !== userId
       );
 
       if (onlineParticipants.length > 0) {
-        session.hostId = onlineParticipants[0].userId;
+        await prisma.session.update({
+          where: { id: session.id },
+          data: { hostId: onlineParticipants[0].userId }
+        });
       } else {
-        session.isActive = false;
+        await prisma.session.update({
+          where: { id: session.id },
+          data: { isActive: false }
+        });
       }
     }
 
-    await session.save();
-
     // Create system message
-    await ChatMessage.create({
-      sessionId: session._id,
-      userId,
-      message: 'left the session',
-      type: 'system'
+    await prisma.chatMessage.create({
+      data: {
+        sessionId: session.id,
+        userId,
+        message: 'left the session',
+        type: 'system'
+      }
     });
 
     res.json({
@@ -199,26 +275,36 @@ export const updateSessionSettings = async (req, res) => {
     const userId = req.userId;
     const { name, privacy, settings } = req.body;
 
-    const session = await Session.findOne({ sessionCode: code });
+    const session = await prisma.session.findFirst({
+      where: { sessionCode: code }
+    });
 
     if (!session) {
       return res.status(404).json({ success: false, message: 'Session not found' });
     }
 
     // Only host can update settings
-    if (session.hostId.toString() !== userId) {
+    if (session.hostId !== userId) {
       return res.status(403).json({ success: false, message: 'Only host can update settings' });
     }
 
-    if (name) session.name = name;
-    if (privacy) session.privacy = privacy;
-    if (settings) session.settings = { ...session.settings, ...settings };
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (privacy) updateData.privacy = privacy;
+    if (settings) {
+      if (settings.allowGuestControl !== undefined) updateData.allowGuestControl = settings.allowGuestControl;
+      if (settings.allowQueueAdd !== undefined) updateData.allowQueueAdd = settings.allowQueueAdd;
+      if (settings.maxParticipants !== undefined) updateData.maxParticipants = settings.maxParticipants;
+    }
 
-    await session.save();
+    const updatedSession = await prisma.session.update({
+      where: { id: session.id },
+      data: updateData
+    });
 
     res.json({
       success: true,
-      session,
+      session: updatedSession,
       message: 'Settings updated successfully'
     });
   } catch (error) {
@@ -233,19 +319,23 @@ export const endSession = async (req, res) => {
     const { code } = req.params;
     const userId = req.userId;
 
-    const session = await Session.findOne({ sessionCode: code });
+    const session = await prisma.session.findFirst({
+      where: { sessionCode: code }
+    });
 
     if (!session) {
       return res.status(404).json({ success: false, message: 'Session not found' });
     }
 
     // Only host can end session
-    if (session.hostId.toString() !== userId) {
+    if (session.hostId !== userId) {
       return res.status(403).json({ success: false, message: 'Only host can end session' });
     }
 
-    session.isActive = false;
-    await session.save();
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { isActive: false }
+    });
 
     res.json({
       success: true,
@@ -263,16 +353,22 @@ export const getChatMessages = async (req, res) => {
     const { code } = req.params;
     const { limit = 50 } = req.query;
 
-    const session = await Session.findOne({ sessionCode: code });
+    const session = await prisma.session.findFirst({
+      where: { sessionCode: code }
+    });
 
     if (!session) {
       return res.status(404).json({ success: false, message: 'Session not found' });
     }
 
-    const messages = await ChatMessage.find({ sessionId: session._id })
-      .populate('userId', 'email avatar')
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
+    const messages = await prisma.chatMessage.findMany({
+      where: { sessionId: session.id },
+      include: {
+        user: { select: { id: true, email: true, avatar: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: parseInt(limit)
+    });
 
     res.json({
       success: true,
@@ -291,21 +387,27 @@ export const sendChatMessage = async (req, res) => {
     const userId = req.userId;
     const { message, type = 'text', songContext } = req.body;
 
-    const session = await Session.findOne({ sessionCode: code });
+    const session = await prisma.session.findFirst({
+      where: { sessionCode: code }
+    });
 
     if (!session) {
       return res.status(404).json({ success: false, message: 'Session not found' });
     }
 
-    const chatMessage = await ChatMessage.create({
-      sessionId: session._id,
-      userId,
-      message,
-      type,
-      songContext
+    const chatMessage = await prisma.chatMessage.create({
+      data: {
+        sessionId: session.id,
+        userId,
+        message,
+        type,
+        songContextId: songContext?.songId,
+        songTimestamp: songContext?.timestamp
+      },
+      include: {
+        user: { select: { id: true, email: true, avatar: true } }
+      }
     });
-
-    await chatMessage.populate('userId', 'email avatar');
 
     res.json({
       success: true,
@@ -324,18 +426,19 @@ export const addToQueue = async (req, res) => {
     const userId = req.userId;
     const { songId } = req.body;
 
-    const session = await Session.findOne({ sessionCode: code });
+    const session = await prisma.session.findFirst({
+      where: { sessionCode: code },
+      include: { participants: true }
+    });
 
     if (!session) {
       return res.status(404).json({ success: false, message: 'Session not found' });
     }
 
     // Check permissions
-    const participant = session.participants.find(
-      p => p.userId.toString() === userId
-    );
+    const participant = session.participants.find(p => p.userId === userId);
 
-    if (!participant || !participant.permissions.canAddToQueue) {
+    if (!participant || !participant.canAddToQueue) {
       return res.status(403).json({ success: false, message: 'No permission to add to queue' });
     }
 
@@ -345,15 +448,19 @@ export const addToQueue = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Song not found' });
     }
 
-    session.queue.push(songId);
-    session.lastUpdate = new Date();
-    await session.save();
+    const updatedSession = await prisma.session.update({
+      where: { id: session.id },
+      data: {
+        queueIds: { push: songId },
+        lastUpdate: new Date()
+      }
+    });
 
-    await session.populate('queue');
+    const queue = await Song.find({ _id: { $in: updatedSession.queueIds } });
 
     res.json({
       success: true,
-      queue: session.queue,
+      queue,
       message: 'Song added to queue'
     });
   } catch (error) {
@@ -365,20 +472,39 @@ export const addToQueue = async (req, res) => {
 // Get active sessions (public)
 export const getActiveSessions = async (req, res) => {
   try {
-    const sessions = await Session.find({
-      isActive: true,
-      privacy: 'public',
-      expiresAt: { $gt: new Date() }
-    })
-      .populate('hostId', 'email avatar')
-      .populate('currentSong')
-      .select('sessionCode name hostId currentSong participants createdAt')
-      .sort({ createdAt: -1 })
-      .limit(20);
+    const sessions = await prisma.session.findMany({
+      where: {
+        isActive: true,
+        privacy: 'public',
+        expiresAt: { gt: new Date() }
+      },
+      include: {
+        host: { select: { id: true, email: true, avatar: true } },
+        participants: true
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    });
+
+    // Populate current songs
+    const sessionsWithSongs = await Promise.all(
+      sessions.map(async (session) => {
+        const currentSong = session.currentSongId ? await Song.findById(session.currentSongId) : null;
+        return {
+          sessionCode: session.sessionCode,
+          name: session.name,
+          hostId: session.hostId,
+          host: session.host,
+          currentSong,
+          participants: session.participants,
+          createdAt: session.createdAt
+        };
+      })
+    );
 
     res.json({
       success: true,
-      sessions
+      sessions: sessionsWithSongs
     });
   } catch (error) {
     console.error('Get active sessions error:', error);

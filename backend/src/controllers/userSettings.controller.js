@@ -1,4 +1,4 @@
-import UserSettings from "../models/userSettings.model.js";
+import prisma from "../config/database.js";
 
 // EQ Presets
 const EQ_PRESETS = {
@@ -16,11 +16,11 @@ export const getUserSettings = async (req, res) => {
   try {
     const userId = req.userId;
 
-    let settings = await UserSettings.findOne({ userId });
+    let settings = await prisma.userSettings.findUnique({ where: { userId } });
 
     // Create default settings if not exists
     if (!settings) {
-      settings = await UserSettings.create({ userId });
+      settings = await prisma.userSettings.create({ data: { userId } });
     }
 
     res.json({
@@ -49,11 +49,11 @@ export const updateAudioQuality = async (req, res) => {
       });
     }
 
-    const settings = await UserSettings.findOneAndUpdate(
-      { userId },
-      { audioQuality: quality },
-      { new: true, upsert: true }
-    );
+    const settings = await prisma.userSettings.upsert({
+      where: { userId },
+      update: { audioQuality: quality },
+      create: { userId, audioQuality: quality }
+    });
 
     res.json({
       success: true,
@@ -82,11 +82,11 @@ export const updateCrossfade = async (req, res) => {
       });
     }
 
-    const settings = await UserSettings.findOneAndUpdate(
-      { userId },
-      { crossfadeDuration: duration },
-      { new: true, upsert: true }
-    );
+    const settings = await prisma.userSettings.upsert({
+      where: { userId },
+      update: { crossfadeDuration: duration },
+      create: { userId, crossfadeDuration: duration }
+    });
 
     res.json({
       success: true,
@@ -108,11 +108,11 @@ export const toggleGapless = async (req, res) => {
     const userId = req.userId;
     const { enabled } = req.body;
 
-    const settings = await UserSettings.findOneAndUpdate(
-      { userId },
-      { gaplessPlayback: enabled },
-      { new: true, upsert: true }
-    );
+    const settings = await prisma.userSettings.upsert({
+      where: { userId },
+      update: { gaplessPlayback: enabled },
+      create: { userId, gaplessPlayback: enabled }
+    });
 
     res.json({
       success: true,
@@ -134,11 +134,11 @@ export const toggleNormalize = async (req, res) => {
     const userId = req.userId;
     const { enabled } = req.body;
 
-    const settings = await UserSettings.findOneAndUpdate(
-      { userId },
-      { normalizeVolume: enabled },
-      { new: true, upsert: true }
-    );
+    const settings = await prisma.userSettings.upsert({
+      where: { userId },
+      update: { normalizeVolume: enabled },
+      create: { userId, normalizeVolume: enabled }
+    });
 
     res.json({
       success: true,
@@ -167,11 +167,11 @@ export const updatePlaybackSpeed = async (req, res) => {
       });
     }
 
-    const settings = await UserSettings.findOneAndUpdate(
-      { userId },
-      { playbackSpeed: speed },
-      { new: true, upsert: true }
-    );
+    const settings = await prisma.userSettings.upsert({
+      where: { userId },
+      update: { playbackSpeed: speed },
+      create: { userId, playbackSpeed: speed }
+    });
 
     res.json({
       success: true,
@@ -193,11 +193,11 @@ export const toggleEqualizer = async (req, res) => {
     const userId = req.userId;
     const { enabled } = req.body;
 
-    const settings = await UserSettings.findOneAndUpdate(
-      { userId },
-      { equalizerEnabled: enabled },
-      { new: true, upsert: true }
-    );
+    const settings = await prisma.userSettings.upsert({
+      where: { userId },
+      update: { equalizerEnabled: enabled },
+      create: { userId, equalizerEnabled: enabled }
+    });
 
     res.json({
       success: true,
@@ -230,14 +230,14 @@ export const updateEqualizerPreset = async (req, res) => {
 
     // Apply preset bands if not custom
     if (preset !== "custom" && EQ_PRESETS[preset]) {
-      updateData.equalizerBands = EQ_PRESETS[preset];
+      Object.assign(updateData, EQ_PRESETS[preset]);
     }
 
-    const settings = await UserSettings.findOneAndUpdate(
-      { userId },
-      updateData,
-      { new: true, upsert: true }
-    );
+    const settings = await prisma.userSettings.upsert({
+      where: { userId },
+      update: updateData,
+      create: { userId, ...updateData }
+    });
 
     res.json({
       success: true,
@@ -278,17 +278,21 @@ export const updateEqualizerBands = async (req, res) => {
         });
       }
 
-      updateBands[`equalizerBands.${key}`] = value;
+      updateBands[key] = value;
     }
 
-    const settings = await UserSettings.findOneAndUpdate(
-      { userId },
-      {
+    const settings = await prisma.userSettings.upsert({
+      where: { userId },
+      update: {
         ...updateBands,
         equalizerPreset: "custom"
       },
-      { new: true, upsert: true }
-    );
+      create: {
+        userId,
+        ...updateBands,
+        equalizerPreset: "custom"
+      }
+    });
 
     res.json({
       success: true,
@@ -327,11 +331,11 @@ export const updateAllSettings = async (req, res) => {
     const userId = req.userId;
     const updates = req.body;
 
-    const settings = await UserSettings.findOneAndUpdate(
-      { userId },
-      updates,
-      { new: true, upsert: true, runValidators: true }
-    );
+    const settings = await prisma.userSettings.upsert({
+      where: { userId },
+      update: updates,
+      create: { userId, ...updates }
+    });
 
     res.json({
       success: true,
