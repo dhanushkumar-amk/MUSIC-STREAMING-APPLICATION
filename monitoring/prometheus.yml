@@ -1,9 +1,63 @@
 global:
-  scrape_interval: 5s
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'music-streaming-monitor'
+    environment: 'development'
 
+# Alertmanager configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load rules once and periodically evaluate them
+rule_files:
+  # - "alerts.yml"
+
+# Scrape configurations
 scrape_configs:
-  - job_name: "spotify-backend"
-    metrics_path: /metrics
+  # Prometheus itself
+  - job_name: 'prometheus'
     static_configs:
-      - targets:
-          - "host.docker.internal:4000"
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # Node Exporter - System Metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'system'
+
+  # cAdvisor - Container Metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          service: 'containers'
+
+  # Redis Exporter - Redis Metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          service: 'redis'
+
+  # Backend API Server (when instrumented with prom-client)
+  - job_name: 'backend-api'
+    static_configs:
+      - targets: ['host.docker.internal:4000']
+        labels:
+          service: 'backend'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # MongoDB Exporter (if you add it later)
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['host.docker.internal:9216']
+        labels:
+          service: 'mongodb'
+    scrape_interval: 30s
