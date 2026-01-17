@@ -65,6 +65,14 @@ connectCloudinary();
 // Connect to MongoDB
 connectDB();
 
+// Initialize Redis Cache Service (Phase 1)
+import cacheService from "./src/services/cacheService.js";
+cacheService.connect().then(() => {
+  console.log('✅ Cache service initialized');
+}).catch(err => {
+  console.error('⚠️  Cache service failed to initialize:', err.message);
+});
+
 /* CREATE SEARCH INDEXES */
 createIndexes();
 applyAutocompleteSettings();
@@ -85,6 +93,7 @@ import userSettingsRouter from "./src/routes/userSettings.route.js";
 import lyricsRouter from "./src/routes/lyrics.route.js";
 import sessionRouter from "./src/routes/session.route.js";
 import artistRouter from "./src/routes/artist.route.js";
+import presenceRouter from "./src/routes/presence.routes.js";
 
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
@@ -101,6 +110,7 @@ app.use("/api/settings", userSettingsRouter);
 app.use("/api/lyrics", lyricsRouter);
 app.use("/api/session", sessionRouter);
 app.use("/api/artist", artistRouter);
+app.use("/api/presence", presenceRouter); // Phase 2: Presence System
 
 
 
@@ -108,23 +118,22 @@ app.use("/api/artist", artistRouter);
 /* DEFAULT ROUTE */
 app.get("/", (req, res) => res.send("API Working - Production Optimized"));
 
-/* ERROR HANDLER */
-app.use((err, req, res, next) => {
-  console.error("🔥 SERVER ERROR:", err);
-  res.status(err.statusCode || 500).json({
-    success: false,
-    message: err.message || "Internal server error",
-  });
-});
+/* GLOBAL ERROR HANDLER (Phase 1) */
+import errorHandler from "./src/middleware/errorHandler.js";
+app.use(errorHandler);
 
-/* START SERVER WITH SOCKET.IO */
+/* START SERVER WITH DISTRIBUTED SOCKET.IO (Phase 2) */
 import { createServer } from 'http';
-import { initializeSocket } from './src/socket/sessionSocket.js';
+import { initializeSocket } from './src/socket/distributedSocket.js';
 
 const httpServer = createServer(app);
 
-// Initialize Socket.io
-initializeSocket(httpServer);
+// Initialize Socket.io with Redis adapter
+initializeSocket(httpServer).then(() => {
+  console.log('✅ Distributed Socket.IO initialized');
+}).catch(err => {
+  console.error('⚠️  Socket.IO initialization failed:', err.message);
+});
 
 httpServer.listen(port, () =>
   console.log(`🚀 Server running on PORT: ${port}`)
