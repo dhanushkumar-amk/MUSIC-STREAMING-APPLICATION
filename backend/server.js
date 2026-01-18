@@ -30,6 +30,7 @@ app.get("/metrics", async (req, res) => {
 /* ROUTES THAT HANDLE FILE UPLOADS FIRST */
 import songRouter from "./src/routes/songRoute.js";
 import albumRouter from "./src/routes/albumRoute.js";
+import artistRouter from "./src/routes/artist.route.js";
 
 // Enable CORS for file upload routes
 app.use(cors());
@@ -39,6 +40,8 @@ app.use(express.json({ limit: "10mb" }));
 
 app.use("/api/song", songRouter);
 app.use("/api/album", albumRouter);
+app.use("/api/artist", artistRouter); // Artist routes with file upload support
+
 
 
 /* --- NOW JSON + SECURITY MIDDLEWARE CAN LOAD --- */
@@ -92,9 +95,8 @@ import statsRouter from "./src/routes/stats.route.js";
 import userSettingsRouter from "./src/routes/userSettings.route.js";
 import lyricsRouter from "./src/routes/lyrics.route.js";
 import sessionRouter from "./src/routes/session.route.js";
-import artistRouter from "./src/routes/artist.route.js";
 import presenceRouter from "./src/routes/presence.routes.js";
-import streamingRouter from "./src/routes/streaming.route.js"; // Phase 3: HLS Streaming
+
 
 
 app.use("/api/auth", authRouter);
@@ -111,9 +113,9 @@ app.use("/api/stats", statsRouter);
 app.use("/api/settings", userSettingsRouter);
 app.use("/api/lyrics", lyricsRouter);
 app.use("/api/session", sessionRouter);
-app.use("/api/artist", artistRouter);
 app.use("/api/presence", presenceRouter); // Phase 2: Presence System
-app.use("/api/streaming", streamingRouter); // Phase 3: HLS Streaming
+
+
 
 
 

@@ -19,7 +19,6 @@ const ListArtist = () => {
   const fetchArtists = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('adminToken');
 
       let url = `${import.meta.env.VITE_BACKEND_URL}/api/artist/list?limit=100`;
 
@@ -29,9 +28,7 @@ const ListArtist = () => {
         url += '&featured=true';
       }
 
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(url);
 
       if (response.data.success) {
         setArtists(response.data.artists);
@@ -50,12 +47,8 @@ const ListArtist = () => {
     }
 
     try {
-      const token = localStorage.getItem('adminToken');
       const response = await axios.delete(
-        `${import.meta.env.VITE_BACKEND_URL}/api/artist/${id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
+        `${import.meta.env.VITE_BACKEND_URL}/api/artist/${id}`
       );
 
       if (response.data.success) {
@@ -79,7 +72,7 @@ const ListArtist = () => {
         <h1 className="text-3xl font-bold">Manage Artists</h1>
         <button
           onClick={() => navigate('/add-artist')}
-          className="px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-semibold"
+          className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold"
         >
           + Add Artist
         </button>
@@ -94,7 +87,7 @@ const ListArtist = () => {
             placeholder="Search artists..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
         </div>
 
@@ -105,7 +98,7 @@ const ListArtist = () => {
               onClick={() => setFilterType(filter)}
               className={`px-4 py-2 rounded-lg font-medium capitalize transition-colors ${
                 filterType === filter
-                  ? 'bg-purple-500 text-white'
+                  ? 'bg-green-500 text-white'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
@@ -198,7 +191,7 @@ const ListArtist = () => {
                         {artist.genres?.slice(0, 3).map((genre, index) => (
                           <span
                             key={index}
-                            className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full"
+                            className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full"
                           >
                             {genre}
                           </span>

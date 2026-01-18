@@ -105,13 +105,11 @@ const AddArtist = () => {
         data.append('coverImage', coverImage);
       }
 
-      const token = localStorage.getItem('adminToken');
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/artist/create`,
         data,
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'
           }
         }
@@ -155,7 +153,7 @@ const AddArtist = () => {
                   </button>
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-purple-500 transition-colors">
+                <label className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-500 transition-colors">
                   <Upload className="w-12 h-12 text-gray-400 mb-2" />
                   <span className="text-sm text-gray-500">Upload Avatar</span>
                   <input
@@ -188,7 +186,7 @@ const AddArtist = () => {
                   </button>
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-purple-500 transition-colors">
+                <label className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-500 transition-colors">
                   <Upload className="w-12 h-12 text-gray-400 mb-2" />
                   <span className="text-sm text-gray-500">Upload Cover</span>
                   <input
@@ -212,7 +210,7 @@ const AddArtist = () => {
               name="name"
               value={formData.name}
               onChange={handleInputChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               required
             />
           </div>
@@ -224,7 +222,7 @@ const AddArtist = () => {
               value={formData.bio}
               onChange={handleInputChange}
               rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="Tell us about the artist..."
             />
           </div>
@@ -236,7 +234,7 @@ const AddArtist = () => {
               name="country"
               value={formData.country}
               onChange={handleInputChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
         </div>
@@ -250,13 +248,13 @@ const AddArtist = () => {
               value={genreInput}
               onChange={(e) => setGenreInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addGenre())}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="Add genre..."
             />
             <button
               type="button"
               onClick={addGenre}
-              className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 flex items-center gap-2"
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
               Add
@@ -266,7 +264,7 @@ const AddArtist = () => {
             {genres.map((genre, index) => (
               <span
                 key={index}
-                className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm flex items-center gap-2"
+                className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm flex items-center gap-2"
               >
                 {genre}
                 <button
@@ -293,7 +291,7 @@ const AddArtist = () => {
                   name={platform}
                   value={socialLinks[platform]}
                   onChange={handleSocialLinkChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder={`https://${platform}.com/...`}
                 />
               </div>
@@ -309,7 +307,7 @@ const AddArtist = () => {
               name="verified"
               checked={formData.verified}
               onChange={handleInputChange}
-              className="w-5 h-5 text-purple-500 rounded focus:ring-2 focus:ring-purple-500"
+              className="w-5 h-5 text-green-500 rounded focus:ring-2 focus:ring-green-500"
             />
             <span className="text-sm font-medium">Verified Artist</span>
           </label>
@@ -320,7 +318,7 @@ const AddArtist = () => {
               name="featured"
               checked={formData.featured}
               onChange={handleInputChange}
-              className="w-5 h-5 text-purple-500 rounded focus:ring-2 focus:ring-purple-500"
+              className="w-5 h-5 text-green-500 rounded focus:ring-2 focus:ring-green-500"
             />
             <span className="text-sm font-medium">Featured Artist</span>
           </label>
@@ -331,7 +329,7 @@ const AddArtist = () => {
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+            className="flex-1 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
           >
             {loading ? 'Creating...' : 'Create Artist'}
           </button>

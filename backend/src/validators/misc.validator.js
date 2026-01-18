@@ -13,16 +13,12 @@ export const artistSchemas = {
     body: z.object({
       name: z.string().min(1, 'Artist name is required').max(100).trim(),
       bio: z.string().max(2000, 'Bio too long').optional(),
-      genre: z.array(z.string().max(50)).max(10, 'Maximum 10 genres allowed').optional(),
+      genres: z.string().optional(), // Will be parsed as JSON
       country: z.string().max(100).optional(),
-      verified: commonValidations.boolean.default(false),
-      socialLinks: z.object({
-        instagram: commonValidations.url.optional(),
-        twitter: commonValidations.url.optional(),
-        facebook: commonValidations.url.optional(),
-        website: commonValidations.url.optional()
-      }).optional()
-    })
+      verified: z.union([z.string(), z.boolean()]).optional(),
+      featured: z.union([z.string(), z.boolean()]).optional(),
+      socialLinks: z.string().optional() // Will be parsed as JSON
+    }).passthrough() // Allow additional fields like files
   },
 
   // GET /api/artist/list

@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { url } from '../../App';
 import { toast } from 'react-toastify';
-import { Trash2, Music, Loader2, AlertCircle, Search, X, Edit2, CheckSquare, Square } from 'lucide-react';
+import { Trash2, Music, Loader2, AlertCircle, Search, X, CheckSquare, Square } from 'lucide-react';
 
 const ListSong = () => {
   const [data, setData] = useState([]);
@@ -11,7 +11,6 @@ const ListSong = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSongs, setSelectedSongs] = useState([]);
-  const [editingSong, setEditingSong] = useState(null);
 
   const fetchSongs = async () => {
     try {

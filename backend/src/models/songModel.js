@@ -32,30 +32,7 @@ const songSchema = new mongoose.Schema({
   playCount: { type: Number, default: 0 },
   uniqueListeners: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 
-  // HLS Streaming fields (Phase 3)
-  hlsUrl: {
-    type: String,
-    default: null,
-    index: true
-  },
-  hlsQualities: {
-    type: Map,
-    of: String,
-    default: null
-  },
-  streamingFormat: {
-    type: String,
-    enum: ['original', 'hls', 'both'],
-    default: 'original'
-  },
-  hlsProcessedAt: {
-    type: Date,
-    default: null
-  },
-  hlsProcessingError: {
-    type: String,
-    default: null
-  }
+
 }, { timestamps: true });
 
 const songModel = mongoose.models.song || mongoose.model("song", songSchema);
