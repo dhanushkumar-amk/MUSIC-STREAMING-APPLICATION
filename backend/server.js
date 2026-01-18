@@ -94,6 +94,8 @@ import lyricsRouter from "./src/routes/lyrics.route.js";
 import sessionRouter from "./src/routes/session.route.js";
 import artistRouter from "./src/routes/artist.route.js";
 import presenceRouter from "./src/routes/presence.routes.js";
+import streamingRouter from "./src/routes/streaming.route.js"; // Phase 3: HLS Streaming
+
 
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
@@ -111,6 +113,8 @@ app.use("/api/lyrics", lyricsRouter);
 app.use("/api/session", sessionRouter);
 app.use("/api/artist", artistRouter);
 app.use("/api/presence", presenceRouter); // Phase 2: Presence System
+app.use("/api/streaming", streamingRouter); // Phase 3: HLS Streaming
+
 
 
 
