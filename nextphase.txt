@@ -1,0 +1,95 @@
+# COMPLETE ROADMAP: Artist Portal & Song Upload System
+
+This guide covers all changes required across the database, backend, admin panel, and artist portal frontend.
+
+---
+
+## 1. 🗄️ DATABASE & BACKEND (Foundation)
+
+### **1.1 Update Database Models**
+- [ ] **Artist Model** (`backend/src/models/artist.model.js`)
+    - Add `email` (String, unique, sparse) - *For login*
+    - Add `password` (String, select: false) - *For login (hashed)*
+    - Add `canUpload` (Boolean, default: false) - *Permission flag*
+    - Add `isActive` (Boolean, default: true) - *Account status*
+- [ ] **Song Model** (`backend/src/models/songModel.js`)
+    - Add `artist` (ObjectId ref 'Artist') - *Link to artist*
+    - Add `uploadedBy` (String: 'admin' | 'artist') - *Source*
+    - Add `uploadStatus` (String: 'approved' | 'pending' | 'rejected') - *Approval flow*
+
+### **1.2 Artist Authentication (JWT)**
+- [ ] **Utils**: `backend/src/utils/jwt.util.js` (Generate tokens)
+- [ ] **Middleware**: `backend/src/middleware/artistAuth.middleware.js` (Verify JWT)
+- [ ] **Controller**: `artistAuth.controller.js` (`login`, `getMe`)
+- [ ] **Route**: `/api/artist-auth` (Login endpoint)
+
+### **1.3 Artist Portal Backend**
+- [ ] **Controller**: `artistPortal.controller.js`
+    - `uploadSong`: Handle file upload, set status 'pending'
+    - `getMySongs`: List only artist's own songs
+    - `getDashboardStats`: Count pending/approved/rejected
+- [ ] **Route**: `/api/artist-portal` (Protected by middleware)
+
+### **1.4 Admin Management Backend**
+- [ ] **Update Artist Controller**: Add `grantAccess` (Set artist email/password)
+- [ ] **Update Song Controller**: Add `approveSong`, `rejectSong`, `getPendingSongs`
+
+---
+
+## 2. 🛡️ ADMIN PANEL (React)
+
+### **2.1 Artist Management**
+- [ ] **Update "List Artists" Page**:
+    - Add "Grant Access" button for each artist
+    - Modal popup to set Email & Password
+    - Toggle "Can Upload" permission
+
+### **2.2 Song Approval System**
+- [ ] **New Page: "Pending Songs"**:
+    - List all songs with `uploadStatus: 'pending'`
+    - Play button to preview song
+    - "Approve" button -> Changes status to 'approved' (Live)
+    - "Reject" button -> Changes status to 'rejected'
+
+---
+
+## 3. 🎨 ARTIST PORTAL FRONTEND (New Project or Route)
+
+*Note: You can build this as a separate React app (recommended for security) or part of the main client with a special route.*
+
+### **3.1 Setup**
+- [ ] Create `artist` folder or routes
+- [ ] Setup `ArtistAuthProvider` context
+
+### **3.2 Pages**
+- [ ] **Login Page**:
+    - Email & Password login form
+    - Redirect to dashboard on success
+- [ ] **Dashboard**:
+    - Stats cards: Total Uploads, Approved, Pending
+    - Recent activity list
+- [ ] **Upload Song Page**:
+    - Form: Name, Description, Image, Audio File
+    - Auto-fill Artist ID (from token)
+    - Submit -> Success message "Sent for approval"
+- [ ] **My Songs Page**:
+    - List of uploaded songs
+    - Status badges (Yellow: Pending, Green: Approved, Red: Rejected)
+    - Delete button (only for pending/rejected)
+
+---
+
+## 4. 🎵 CLIENT APP (User Facing)
+
+### **4.1 Logic Updates**
+- [ ] **Filter Songs**: Ensure `getAllSongs` ONLY returns `uploadStatus: 'approved'`
+- [ ] **Artist Page**: Hide pending/rejected songs from public profile
+
+---
+
+## 📅 EXECUTION ORDER
+1. Database Schema Updates
+2. Backend Auth & Portal API
+3. Backend Admin API
+4. **Admin Panel UI Updates** (So you can create artist accounts)
+5. **Artist Portal UI Build** (So artists can login and upload)

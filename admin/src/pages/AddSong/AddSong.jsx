@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { assets } from '../../assets/assets';
 import { url } from '../../App';
 import { toast } from 'react-toastify';
